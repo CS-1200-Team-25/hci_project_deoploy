@@ -1,5 +1,5 @@
-import { ExperimentShell } from '../../components/experiment/ExperimentShell';
+import { ExperimentController } from '../../components/experiment/ExperimentController';
 
 export function ExperimentPage() {
-  return <ExperimentShell />;
+  return <ExperimentController />;
 }

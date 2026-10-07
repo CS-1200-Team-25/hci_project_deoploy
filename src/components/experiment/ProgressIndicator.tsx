@@ -1,3 +1,3 @@
-export function ProgressIndicator() {
-  return <p className="task-progress">Three planning tasks · Progress will appear here</p>;
+export function ProgressIndicator({ trialIndex }: { trialIndex?: number }) {
+  return <p className="task-progress">{trialIndex === undefined ? 'Three planning tasks' : `Task ${trialIndex + 1} of 3`}</p>;
 }

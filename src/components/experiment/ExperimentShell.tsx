@@ -1,7 +1,9 @@
 import { AgentPanel } from '../agent/AgentPanel';
 import { TaskHeader } from './TaskHeader';
+import type { TaskHeaderProps } from './TaskHeader';
+import type { ReactNode } from 'react';
 
-export function ExperimentShell() {
+export function ExperimentShell({ children, ...header }: TaskHeaderProps & { children: ReactNode }) {
   return (
     <div className="study-page">
       <header className="site-header">
@@ -10,17 +12,10 @@ export function ExperimentShell() {
         <span className="study-label">Research prototype</span>
       </header>
       <main className="experiment-shell">
-        <TaskHeader />
+        <TaskHeader {...header} />
         <div className="workspace-layout">
-          <section className="task-workspace" aria-labelledby="workspace-title">
-            <p className="eyebrow">Your workspace</p>
-            <h2 id="workspace-title">A place to put your plans together</h2>
-            <p className="muted">Task instructions and planning tools will appear here.</p>
-            <div className="workspace-placeholder">
-              <span className="placeholder-symbol" aria-hidden="true">+</span>
-              <h3>Task workspace</h3>
-              <p>Birthday-party, weekend-itinerary, and weekly-schedule planning share this space.</p>
-            </div>
+          <section className="task-workspace" aria-label="Planning workspace">
+            {children}
           </section>
           <AgentPanel />
         </div>
@@ -29,7 +24,7 @@ export function ExperimentShell() {
           <button type="button" disabled>Complete task <span aria-hidden="true">→</span></button>
         </footer>
       </main>
-      <p className="prototype-note">Static layout preview · Study controls are not active.</p>
+      <p className="prototype-note">Supervised internal pilot · Draft study materials</p>
     </div>
   );
 }
