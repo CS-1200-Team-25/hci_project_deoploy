@@ -2,6 +2,10 @@ import type { ExperimentSession } from '../types/experiment';
 import { PILOT_CONFIGURATION } from './conditions';
 import { experimentSequences } from './sequences';
 import { recordEvent } from './logger';
+import { getTask } from '../tasks/registry';
+import type { TaskAction } from '../types/task';
+import { isSupervisorAuthorized } from './supervisor';
+import type { SupervisorAuthorization } from './supervisor';
 
 /** Sequence indices are one-based, allocated by the supervisor across sessions. */
 export function createSession(participantId: string, sequenceIndex: number, now = Date.now()): ExperimentSession {
@@ -40,13 +44,70 @@ export function consentToSession(session: ExperimentSession, now = Date.now()): 
 
 export function revealTask(session: ExperimentSession, now = Date.now()): ExperimentSession {
   if (session.phase !== 'instructions' || session.consentedAt === undefined) return session;
+  const definition = getTask(session.trials[session.currentTrialIndex].task);
   return recordEvent({
     ...session,
     phase: 'task',
     trials: session.trials.map((trial, index) => index === session.currentTrialIndex
-      ? { ...trial, status: 'active', startedAt: now }
+      ? { ...trial, status: 'active', startedAt: now, ...(definition ? { taskVersion: definition.version, taskState: structuredClone(definition.initialState) } : {}) }
       : trial),
   }, 'task_started', { scenarioVersion: session.configuration.scenarioVersion }, now);
+}
+
+export function updateTaskState(session: ExperimentSession, taskState: unknown, action: TaskAction, now = Date.now()): ExperimentSession {
+  const trial = session.trials[session.currentTrialIndex];
+  const definition = getTask(trial.task);
+  if (session.phase !== 'task' || trial.status !== 'active' || !definition) return session;
+  if (!definition.isState(taskState)) throw new Error('Invalid task state.');
+  return recordEvent({
+    ...session,
+    trials: session.trials.map((candidate, index) => index === session.currentTrialIndex
+      ? { ...candidate, taskState: structuredClone(taskState), stateRevision: candidate.stateRevision + 1 }
+      : candidate),
+  }, action.type, { ...action.payload, stateRevision: trial.stateRevision + 1 }, now);
+}
+
+export function submitTask(session: ExperimentSession, now = Date.now()): ExperimentSession {
+  const trial = session.trials[session.currentTrialIndex];
+  const definition = getTask(trial.task);
+  if (session.phase !== 'task' || trial.status !== 'active' || !definition || trial.startedAt === undefined) return session;
+  const validation = definition.validate(trial.taskState);
+  const attempt = { timestamp: now, stateRevision: trial.stateRevision, validation };
+  let next = recordEvent(session, 'task_validation_requested', { attempt: (trial.submissionAttempts?.length ?? 0) + 1, stateRevision: trial.stateRevision }, now);
+  next = recordEvent(next, 'task_validation_result', { ...validation, stateRevision: trial.stateRevision }, now);
+  const elapsedMs = Math.max(0, now - trial.startedAt);
+  next = {
+    ...next,
+    phase: validation.isComplete ? 'post-task-survey' : 'task',
+    trials: next.trials.map((candidate, index) => index === next.currentTrialIndex ? {
+      ...candidate,
+      submissionAttempts: [...(candidate.submissionAttempts ?? []), attempt],
+      ...(validation.isComplete ? {
+        status: 'completed', outcome: 'successful', completedAt: now, elapsedMs,
+        successfulCompletionMs: elapsedMs, finalPlan: structuredClone(candidate.taskState), finalValidation: validation,
+      } : {}),
+    } : candidate),
+  };
+  return validation.isComplete ? recordEvent(next, 'task_completed', { outcome: 'successful', elapsedMs, successfulCompletionMs: elapsedMs }, now) : next;
+}
+
+export function terminateTask(session: ExperimentSession, authorization: SupervisorAuthorization, reason: string, now = Date.now()): ExperimentSession {
+  if (!isSupervisorAuthorized(session, authorization)) throw new Error('Supervisor authorization is required.');
+  if (!reason.trim()) throw new Error('A termination reason is required.');
+  const trial = session.trials[session.currentTrialIndex];
+  const definition = getTask(trial.task);
+  if (session.phase !== 'task' || trial.status !== 'active' || trial.startedAt === undefined || !definition) return session;
+  const elapsedMs = Math.max(0, now - trial.startedAt);
+  const next: ExperimentSession = {
+    ...session,
+    phase: 'post-task-survey',
+    trials: session.trials.map((candidate, index) => index === session.currentTrialIndex ? {
+      ...candidate, status: 'terminated', outcome: 'unsuccessful', completedAt: now,
+      elapsedMs, terminationReason: reason.trim(), finalPlan: structuredClone(candidate.taskState),
+      finalValidation: definition.validate(candidate.taskState),
+    } : candidate),
+  };
+  return recordEvent(next, 'task_terminated', { outcome: 'unsuccessful', terminationReason: reason.trim(), elapsedMs }, now);
 }
 
 export function recoverSession(session: ExperimentSession, now = Date.now()): ExperimentSession {

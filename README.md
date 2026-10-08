@@ -2,7 +2,7 @@
 
 React + TypeScript + Vite prototype for a supervised planning pilot. The current
 implementation assigns a participant session, collects draft consent, displays
-shared instructions, reveals the assigned first scenario and restores progress
+shared instructions, supports timed birthday planning and restores progress
 after a reload. `ARCHITECTURE.md` defines the full study contract; `CONTEXT.md`
 describes the implemented domain and remaining work.
 
@@ -29,6 +29,13 @@ allocates indices sequentially, wrapping to 1 after a full cycle. Each sequence
 crosses one of six task orders with one of six condition orders. Full-cycle
 balance does not guarantee balance for a smaller pilot.
 
+Set a supervisor access code of at least six characters before handing the
+session to the participant. Keep the code with the supervisor. Exceptional
+termination requires unlocking supervisor controls and entering a reason;
+reload locks the controls again. A salted SHA-256 verifier is stored locally,
+not the plaintext code. This protects ordinary supervised controls; it is not
+remote authentication or a defense against someone modifying browser data.
+
 Assignment, phase, timing anchors, configuration and ordered event records are
 stored under `planning-pilot-session-v1` in browser local storage after each
 committed action. Reload resumes that same session. Consent checkboxes remain
@@ -38,21 +45,21 @@ scenario reveal and includes time in hidden tabs and across reloads.
 Damaged or incompatible saved data is preserved and blocks a replacement
 session. Saving failures show an alert and retain current data in memory; keep
 that tab open for the supervisor. Clearing browser data removes local records.
-For disposable QA sessions (including Issue #19), edit or remove
-`planning-pilot-session-v1` in the browser's Application/Storage panel. Then use
-**Reload saved session** under **Supervisor storage tools**, or on blocked setup,
-to apply the change. Deleting that key returns to setup; editing it revalidates
-the record. Invalid JSON or inconsistent phases block recovery and remain
-preserved. Do not change only the phase to go backwards: start a fresh QA session
-instead. The app checks for external storage changes before saving and on focus,
-including changes from another tab, so its old in-memory copy cannot undo an
-edit or deletion. Reloading discards unsaved in-memory changes, including data
-retained after a save failure. This prototype does not yet provide session export.
+This incremental prototype does not yet provide session export or a reset UI.
 
-Planning workspaces and validators, interventions, surveys and completion are
-reserved for later tickets. The task completion button stays disabled, and the
-assistant panel remains neutral. Consent and scenario wording are internal
-pilot drafts.
+The birthday workspace uses the versioned fixed catalog with editable quantities
+and scheduled activity starts. Submission checks guest coverage, budget and
+scheduling requirements. Failed attempts keep editing and timing active; a
+passing attempt freezes the final plan and successful completion time. A
+supervisor-ended trial retains its unsuccessful outcome and elapsed duration
+without a successful completion time. Both outcomes stop at the reserved
+post-task phase until surveys are implemented.
+
+Weekend/schedule workspaces, interventions and surveys remain reserved for later
+tickets. Unimplemented workspaces have disabled completion. The assistant panel
+remains neutral. Consent and scenario wording are internal pilot drafts. Earlier
+scaffold sessions without implemented task data are preserved if they cannot
+be safely recovered; no silent migration changes their assignment or timer.
 
 ## Verification
 

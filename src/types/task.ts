@@ -17,7 +17,14 @@ export interface ExperimentTask<TState> {
   title: string;
   instructions: string;
   initialState: TState;
+  version: string;
+  isState(state: unknown): state is TState;
   validate(state: TState): ValidationResult;
   getAgentContext(state: TState): AgentContext;
   evaluateSignals(state: TState): AgentSignal[];
+}
+
+export interface TaskAction {
+  type: 'item_added' | 'item_removed' | 'item_updated' | 'item_moved';
+  payload: Record<string, unknown>;
 }

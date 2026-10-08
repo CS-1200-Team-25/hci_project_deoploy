@@ -3,7 +3,10 @@ import { TaskHeader } from './TaskHeader';
 import type { TaskHeaderProps } from './TaskHeader';
 import type { ReactNode } from 'react';
 
-export function ExperimentShell({ children, ...header }: TaskHeaderProps & { children: ReactNode }) {
+export function ExperimentShell({ children, completionControl, ...header }: TaskHeaderProps & {
+  children: ReactNode;
+  completionControl?: { onComplete(): void } | false;
+}) {
   return (
     <div className="study-page">
       <header className="site-header">
@@ -21,7 +24,7 @@ export function ExperimentShell({ children, ...header }: TaskHeaderProps & { chi
         </div>
         <footer className="task-footer">
           <p>Complete your plan before moving on.</p>
-          <button type="button" disabled>Complete task <span aria-hidden="true">→</span></button>
+          {completionControl !== false && <button type="button" disabled={!completionControl} onClick={completionControl ? completionControl.onComplete : undefined}>Complete task <span aria-hidden="true">→</span></button>}
         </footer>
       </main>
       <p className="prototype-note">Supervised internal pilot · Draft study materials</p>

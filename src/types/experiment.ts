@@ -1,3 +1,5 @@
+import type { ValidationResult } from './task';
+
 export type ExperimentPhase =
   | 'welcome'
   | 'instructions'
@@ -19,7 +21,13 @@ export interface Trial {
   outcome?: 'successful' | 'unsuccessful';
   terminationReason?: string;
   taskState?: unknown;
+  taskVersion?: string;
   stateRevision: number;
+  submissionAttempts?: { timestamp: number; stateRevision: number; validation: ValidationResult }[];
+  finalPlan?: unknown;
+  finalValidation?: ValidationResult;
+  elapsedMs?: number;
+  successfulCompletionMs?: number;
 }
 
 export interface PilotConfiguration {
@@ -72,4 +80,5 @@ export interface ExperimentSession {
   consentedAt?: number;
   postTaskSurveys: Record<string, PostTaskSurvey>;
   finalSurvey?: FinalSurvey;
+  supervisorAccess?: { salt: string; verifier: string };
 }

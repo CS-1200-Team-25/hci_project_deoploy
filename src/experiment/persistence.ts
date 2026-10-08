@@ -1,6 +1,7 @@
 import type { ExperimentSession } from '../types/experiment';
 import { experimentSequences } from './sequences';
 import { PILOT_CONFIGURATION } from './conditions';
+import { getTask } from '../tasks/registry';
 
 export const SESSION_STORAGE_KEY = 'planning-pilot-session-v1';
 type SessionStorage = Pick<Storage, 'getItem' | 'setItem'>;
@@ -13,6 +14,30 @@ export function saveSession(session: ExperimentSession, storage: SessionStorage 
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isValidation(value: unknown): value is Record<string, unknown> & { isComplete: boolean; errors: string[]; warnings: string[] } {
+  return isRecord(value) && typeof value.isComplete === 'boolean'
+    && Array.isArray(value.errors) && value.errors.every((error) => typeof error === 'string')
+    && Array.isArray(value.warnings) && value.warnings.every((warning) => typeof warning === 'string')
+    && value.isComplete === (value.errors.length === 0);
+}
+
+function validRecordedOutcome(trial: Record<string, unknown>, finalPlanIsValid: (state: unknown) => boolean) {
+  if (trial.submissionAttempts !== undefined && (!Array.isArray(trial.submissionAttempts)
+    || !trial.submissionAttempts.every((attempt) => isRecord(attempt) && Number.isFinite(attempt.timestamp)
+      && Number.isInteger(attempt.stateRevision) && (attempt.stateRevision as number) >= 0
+      && (attempt.stateRevision as number) <= (trial.stateRevision as number) && isValidation(attempt.validation)))) return false;
+  if (trial.status !== 'completed' && trial.status !== 'terminated') {
+    return trial.finalPlan === undefined && trial.finalValidation === undefined && trial.elapsedMs === undefined && trial.successfulCompletionMs === undefined;
+  }
+  if (!finalPlanIsValid(trial.finalPlan) || !isValidation(trial.finalValidation)
+    || !Number.isFinite(trial.elapsedMs) || (trial.elapsedMs as number) < 0
+    || trial.elapsedMs !== Math.max(0, (trial.completedAt as number) - (trial.startedAt as number))) return false;
+  if (trial.status === 'terminated') return trial.successfulCompletionMs === undefined;
+  return trial.finalValidation.isComplete && trial.successfulCompletionMs === trial.elapsedMs
+    && Array.isArray(trial.submissionAttempts) && trial.submissionAttempts.length > 0
+    && trial.submissionAttempts.at(-1).validation.isComplete;
 }
 
 /** Reject incompatible or damaged data rather than silently replacing its assignment. */
@@ -50,6 +75,9 @@ export function loadSession(storage: SessionStorage = localStorage): ExperimentS
           || trial.outcome !== (trial.status === 'completed' ? 'successful' : 'unsuccessful')))
       || (trial.status === 'terminated' && (typeof trial.terminationReason !== 'string' || !trial.terminationReason.trim()))) return false;
     trialIds.add(trial.id);
+    const definition = getTask(sequence.trials[index].task);
+    if (trial.status !== 'pending' && definition && (trial.taskVersion !== definition.version || !definition.isState(trial.taskState))) return false;
+    if (!validRecordedOutcome(trial, (state) => definition ? definition.isState(state) : state !== undefined)) return false;
     return true;
   });
   const eventIds = new Set<string>();
