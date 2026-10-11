@@ -2,7 +2,7 @@
 
 React + TypeScript + Vite prototype for a supervised planning pilot. The current
 implementation assigns a participant session, collects draft consent, displays
-shared instructions, supports timed birthday planning and restores progress
+shared instructions, supports timed birthday/weekend planning and restores progress
 after a reload. `ARCHITECTURE.md` defines the full study contract; `CONTEXT.md`
 describes the implemented domain and remaining work.
 
@@ -55,7 +55,17 @@ supervisor-ended trial retains its unsuccessful outcome and elapsed duration
 without a successful completion time. Both outcomes stop at the reserved
 post-task phase until surveys are implemented.
 
-Weekend/schedule workspaces, interventions and surveys remain reserved for later
+Weekend planning includes fixed entry fees, daily opening hours, one-night
+lodging and prepaid transport choices. The chosen transport exposes a complete
+travel-time table. Times are whole minutes in a fictional two-day weekend;
+Sunday is offset by 1440 minutes. The traveler starts at the station Saturday
+09:00, stays at lodging Saturday22:00–Sunday08:00, and returns to the station
+by Sunday18:00. Travel to/from all these anchors must fit. Overnight activity
+bookings are not offered by the catalogs; visits must fit within a listed
+same-day opening window. Feasible route backtracking may produce an optional
+warning but does not block completion.
+
+The schedule workspace, interventions and surveys remain reserved for later
 tickets. Unimplemented workspaces have disabled completion. The assistant panel
 remains neutral. Consent and scenario wording are internal pilot drafts. Earlier
 scaffold sessions without implemented task data are preserved if they cannot
@@ -69,7 +79,7 @@ npm test
 ```
 
 Playwright runs the participant-visible setup, consent, instructions, scenario
-reveal and reload flow with a controlled clock. Recorded outcomes are inspected
+reveal, task editing/submission and reload flow with a controlled clock. Recorded outcomes are inspected
 through the public session persistence interface. Public session-contract tests
 verify all 36 sequences and duplicate-action guards. Typechecking and the
 production build remain required checks.

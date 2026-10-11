@@ -5,8 +5,7 @@ import { PILOT_SCENARIOS } from '../../experiment/scenarios';
 import { loadSession, saveSession, SESSION_STORAGE_KEY } from '../../experiment/persistence';
 import { recordEvent } from '../../experiment/logger';
 import { ExperimentShell } from './ExperimentShell';
-import { BirthdayWorkspace } from '../tasks/birthday';
-import { isBirthdayState } from '../../tasks/birthday';
+import { TaskRenderer } from './TaskRenderer';
 import { getTask } from '../../tasks/registry';
 import { ValidationFeedback } from './ValidationFeedback';
 import { ValidationToast } from './ValidationToast';
@@ -149,11 +148,7 @@ export function ExperimentController() {
         <ValidationFeedback result={trial.submissionAttempts?.at(-1)?.validation} announceErrors={false} />
         {validationToast && <ValidationToast key={validationToast.attempt} errors={validationToast.errors}
           onDismiss={() => setValidationToast(null)} />}
-        {trial.task === 'birthday' && isBirthdayState(trial.taskState) ? <BirthdayWorkspace state={trial.taskState}
-          onChange={(state, action) => commit(updateTaskState(sessionRef.current!, state, action))} /> : <div className="workspace-placeholder">
-          <h3>Planning tools are being prepared</h3>
-          <p>This task workspace is not implemented yet. A trial cannot pass until its planning tools and validator are available.</p>
-        </div>}
+        <TaskRenderer taskId={trial.task} state={trial.taskState} onChange={(state, action) => commit(updateTaskState(sessionRef.current!, state, action))} />
         {definition && <SupervisorControls session={session} onTerminate={(authorization, reason) => commit(terminateTask(sessionRef.current!, authorization, reason))} />}
       </>}
       {session.phase === 'post-task-survey' && <>

@@ -18,8 +18,21 @@ typed contracts: post-task survey, final survey and completion. Birthday plannin
 now supports catalog selection, quantity edits, scheduled activity moves and
 removal. Its public task contract validates 12 food servings, 12 drink servings,
 one activity, the $300 budget and activities within 14:00–17:00 without overlap.
-Decorations are an optional improvement. Weekend and schedule workspaces cannot
-currently pass because their tools and validators remain unimplemented.
+Decorations are an optional improvement. Weekend planning now supports lodging
+and transport selections and activity add/remove/edit/day/time moves. The
+schedule workspace cannot currently pass because its tools and validator remain
+unimplemented.
+
+Weekend catalog version1 uses integer minutes from fictional Saturday00:00;
+Sunday times add1440. Trip anchors are station arrival Saturday09:00 and station
+departure Sunday18:00. Selected lodging reserves Saturday22:00–Sunday08:00,
+with travel to check-in and after checkout checked using the fixed selected-
+transport matrix. All activity entry fees, one-night lodging and prepaid
+transport costs count toward$500. Every day needs two activity bookings; each
+visit must fit entirely in a listed same-day opening window. Activities cannot
+overlap each other or overnight lodging. Exact travel/window/budget boundaries
+pass. Feasible backtracking is optional, never a hidden passing requirement.
+The explicit weekend scenario is included in scenario version2.
 
 The shared lifecycle records every submission and validation result. Failed
 submissions show blocking requirements in a dismissible toast and in the workspace,
@@ -57,4 +70,4 @@ Scenario, sequence and condition-policy identifiers are versioned pilot drafts.
 Baseline's disabled threshold is serialized explicitly as `null` alongside
 `proactive: false`. Study knobs and content must be frozen after piloting before
 recruitment. See `ARCHITECTURE.md` and GitHub issues #3 and #4 for the full
-contract and issues #4–#5 for the implemented slices.
+contract and issues #4–#6 for the implemented slices.

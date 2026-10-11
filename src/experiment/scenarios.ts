@@ -8,7 +8,7 @@ export const PILOT_SCENARIOS: Record<TaskId, { title: string; instructions: stri
   },
   weekend: {
     title: 'Weekend-itinerary planning',
-    instructions: 'Plan a fictional trip for one traveler, Saturday 09:00 through Sunday 18:00, within a $500 budget. Include Saturday-night lodging, transport and at least two activities each day. Include lodging and transport in the budget. Respect opening windows, travel times and avoid overlaps. Route efficiency beyond feasibility is optional.',
+    instructions: 'Plan a fictional trip for one traveler, Saturday 09:00 through Sunday 18:00, within a $500 budget. Include Saturday-night lodging, transport and at least two activities each day. Include every activity, lodging and transport cost. Start at the station Saturday 09:00 and return there by Sunday 18:00. Lodging reserves Saturday 22:00–Sunday 08:00 at its listed location; include travel before check-in and after checkout. Respect listed opening windows, fixed travel times and avoid overlaps. Activity durations must fit entirely in their opening windows. Transport prices cover all transfers. Route efficiency beyond feasibility is optional.',
   },
   schedule: {
     title: 'Weekly-schedule planning',

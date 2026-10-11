@@ -1,6 +1,7 @@
 import type { TaskId } from '../types/experiment';
 import type { ExperimentTask } from '../types/task';
 import { birthdayTask } from './birthday';
+import { weekendTask } from './weekend';
 
 /** Erase each workspace's state type only after checking its public runtime contract. */
 function registerTask<T>(task: ExperimentTask<T>): ExperimentTask<unknown> {
@@ -16,5 +17,7 @@ function registerTask<T>(task: ExperimentTask<T>): ExperimentTask<unknown> {
   };
 }
 
-const implementedTasks: Partial<Record<TaskId, ExperimentTask<unknown>>> = { birthday: registerTask(birthdayTask) };
+const implementedTasks: Partial<Record<TaskId, ExperimentTask<unknown>>> = {
+  birthday: registerTask(birthdayTask), weekend: registerTask(weekendTask),
+};
 export function getTask(taskId: TaskId) { return implementedTasks[taskId]; }

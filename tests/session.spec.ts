@@ -175,7 +175,7 @@ test('scenario reveal starts elapsed time and placeholder tasks cannot complete'
   await page.clock.pauseAt(new Date('2026-10-04T12:00:01Z'));
   await page.goto('/');
   await page.getByLabel('Participant ID').fill('P002');
-  await page.getByLabel('Sequence index').fill('13');
+  await page.getByLabel('Sequence index').fill('25');
   await page.getByLabel('Supervisor access code').fill('research-only');
   await page.getByRole('button', { name: 'Create session' }).click();
   await page.getByLabel('I consent to take part in this supervised pilot').check();
@@ -183,9 +183,9 @@ test('scenario reveal starts elapsed time and placeholder tasks cannot complete'
   await page.clock.runFor(5000);
   await expect(page.getByLabel('Elapsed time')).toHaveText('Elapsed00:00');
   await page.getByRole('button', { name: 'Reveal first task' }).click();
-  await expect(page.getByRole('heading', { name: 'Weekend-itinerary planning', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Weekly-schedule planning', exact: true })).toBeVisible();
   await expect(page.getByText('Task 1 of 3')).toBeVisible();
-  await expect(page.getByText('$500 budget', { exact: false })).toBeVisible();
+  await expect(page.getByText('four assignment preparation hours', { exact: false })).toBeVisible();
   await page.clock.runFor(65000);
   await expect(page.getByLabel('Elapsed time')).toHaveText('Elapsed01:05');
   await expect(page.getByRole('button', { name: 'Complete task' })).toBeDisabled();
