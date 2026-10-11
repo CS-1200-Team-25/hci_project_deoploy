@@ -19,9 +19,10 @@ now supports catalog selection, quantity edits, scheduled activity moves and
 removal. Its public task contract validates 12 food servings, 12 drink servings,
 one activity, the $300 budget and activities within 14:00–17:00 without overlap.
 Decorations are an optional improvement. Weekend planning now supports lodging
-and transport selections and activity add/remove/edit/day/time moves. The
-schedule workspace cannot currently pass because its tools and validator remain
-unimplemented.
+and transport selections and activity add/remove/edit/day/time moves. Weekly
+scheduling includes immutable fixed commitments plus editable preparation and
+optional meal/rest/exercise/buffer blocks. All three workspaces now use the same
+submission, timing and outcome lifecycle.
 
 Weekend catalog version1 uses integer minutes from fictional Saturday00:00;
 Sunday times add1440. Trip anchors are station arrival Saturday09:00 and station
@@ -33,6 +34,17 @@ visit must fit entirely in a listed same-day opening window. Activities cannot
 overlap each other or overnight lodging. Exact travel/window/budget boundaries
 pass. Feasible backtracking is optional, never a hidden passing requirement.
 The explicit weekend scenario is included in scenario version2.
+
+Schedule fixture version1 preserves Monday/Wednesday/Friday09:00–11:00 classes
+and Tuesday/Thursday13:00–17:00 work. Blocks use day indices0–4 and local whole
+minutes; durations are positive whole minutes and all blocks fit08:00–20:00.
+Intervals include their start and exclude their end, allowing adjacent blocks.
+At least240 non-overlapping preparation minutes must occur before Friday17:00.
+The portion of a preparation block before the deadline counts, even when its
+remaining time falls later. Optional blocks are not required; selected optional
+blocks still obey daily bounds and overlap rules. Fixed commitments are
+read-only and their exact presence is enforced by runtime edit/recovery guards.
+Scenario version3 records these explicit boundary/duration semantics.
 
 The shared lifecycle records every submission and validation result. Failed
 submissions show blocking requirements in a dismissible toast and in the workspace,
@@ -70,4 +82,4 @@ Scenario, sequence and condition-policy identifiers are versioned pilot drafts.
 Baseline's disabled threshold is serialized explicitly as `null` alongside
 `proactive: false`. Study knobs and content must be frozen after piloting before
 recruitment. See `ARCHITECTURE.md` and GitHub issues #3 and #4 for the full
-contract and issues #4–#6 for the implemented slices.
+contract and issues #4–#7 for the implemented slices.

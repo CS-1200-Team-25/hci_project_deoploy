@@ -170,7 +170,7 @@ test('reload restores consent phase, stable assignment and elapsed task time', a
   await expect(page.getByLabel('Elapsed time')).toHaveText('Elapsed01:00');
 });
 
-test('scenario reveal starts elapsed time and placeholder tasks cannot complete', async ({ page }) => {
+test('scenario reveal starts elapsed time and passing validation remains required', async ({ page }) => {
   await page.clock.install({ time: new Date('2026-10-04T12:00:00Z') });
   await page.clock.pauseAt(new Date('2026-10-04T12:00:01Z'));
   await page.goto('/');
@@ -188,7 +188,8 @@ test('scenario reveal starts elapsed time and placeholder tasks cannot complete'
   await expect(page.getByText('four assignment preparation hours', { exact: false })).toBeVisible();
   await page.clock.runFor(65000);
   await expect(page.getByLabel('Elapsed time')).toHaveText('Elapsed01:05');
-  await expect(page.getByRole('button', { name: 'Complete task' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Complete task' }).click();
+  await expect(page.getByRole('alert')).toContainText('four preparation hours');
   await expect(page.getByRole('complementary', { name: 'AI Assistant' })).toBeVisible();
   await expect(page.getByText(/baseline|low eagerness|high eagerness/i)).toHaveCount(0);
 });

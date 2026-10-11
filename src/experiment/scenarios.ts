@@ -12,6 +12,6 @@ export const PILOT_SCENARIOS: Record<TaskId, { title: string; instructions: stri
   },
   schedule: {
     title: 'Weekly-schedule planning',
-    instructions: 'Arrange a fictional Monday–Friday week within 08:00–20:00 daily. Preserve classes Monday, Wednesday and Friday 09:00–11:00 and work Tuesday and Thursday 13:00–17:00. Schedule four assignment preparation hours before Friday 17:00. Avoid overlaps and blocks outside daily bounds. Meals, rest, exercise and extra buffers are optional.',
+    instructions: 'Arrange a fictional Monday–Friday week within 08:00–20:00 daily. Preserve classes Monday, Wednesday and Friday 09:00–11:00 and work Tuesday and Thursday 13:00–17:00. Schedule four assignment preparation hours before Friday 17:00. Count whole preparation minutes earlier than the deadline, including the portion of a block before it; later minutes do not count. Durations must be positive whole minutes. Blocks may meet at an endpoint; avoid overlaps and blocks outside daily bounds. Meals, rest, exercise and extra buffers are optional.',
   },
 };

@@ -2,7 +2,7 @@
 
 React + TypeScript + Vite prototype for a supervised planning pilot. The current
 implementation assigns a participant session, collects draft consent, displays
-shared instructions, supports timed birthday/weekend planning and restores progress
+shared instructions, supports all three timed planning tasks and restores progress
 after a reload. `ARCHITECTURE.md` defines the full study contract; `CONTEXT.md`
 describes the implemented domain and remaining work.
 
@@ -65,8 +65,16 @@ bookings are not offered by the catalogs; visits must fit within a listed
 same-day opening window. Feasible route backtracking may produce an optional
 warning but does not block completion.
 
-The schedule workspace, interventions and surveys remain reserved for later
-tickets. Unimplemented workspaces have disabled completion. The assistant panel
+Weekly scheduling preserves fixed Monday/Wednesday/Friday09:00–11:00 classes
+and Tuesday/Thursday13:00–17:00 work. Editable preparation and optional blocks
+use positive whole-minute durations within Monday–Friday08:00–20:00. Adjacent
+blocks are allowed; overlaps are not. At least240 preparation minutes must fall
+before Friday17:00; a block spanning that deadline contributes only its earlier
+portion. Optional meals, rest, exercise and buffers are not required, but all
+selected blocks must fit the same bounds and conflict rules. Fixed commitments
+are read-only and altered saved commitments block recovery.
+
+Interventions and surveys remain reserved for later tickets. The assistant panel
 remains neutral. Consent and scenario wording are internal pilot drafts. Earlier
 scaffold sessions without implemented task data are preserved if they cannot
 be safely recovered; no silent migration changes their assignment or timer.
