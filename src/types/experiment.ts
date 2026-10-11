@@ -35,6 +35,7 @@ export interface PilotConfiguration {
   sequenceVersion: string;
   scenarioVersion: string;
   policyVersion: string;
+  surveyVersion: string;
   conditions: Record<ConditionId, { proactive: boolean; threshold: number | null }>;
 }
 
@@ -51,12 +52,14 @@ export interface ExperimentEvent {
   payload: Record<string, unknown>;
 }
 
-/** Pilot instruments; their controller-owned submission screens follow in later work. */
+/** Fixed pilot-draft instruments submitted through controller-owned phase gates. */
 export interface PostTaskSurvey {
   helpfulness: number | 'not-applicable';
   interruption: number;
   submittedAt: number;
 }
+export type PostTaskSurveyDraft = Partial<Pick<PostTaskSurvey, 'helpfulness' | 'interruption'>>;
+export interface FinalSurveyDraft { preferredTrialId?: string | null; explanation: string }
 
 export interface FinalSurvey {
   preferredTrialId: string | null;
@@ -79,6 +82,9 @@ export interface ExperimentSession {
   lastSavedAt: number;
   consentedAt?: number;
   postTaskSurveys: Record<string, PostTaskSurvey>;
+  postTaskSurveyDrafts: Record<string, PostTaskSurveyDraft>;
+  finalSurveyDraft: FinalSurveyDraft;
+  completedAt?: number;
   finalSurvey?: FinalSurvey;
   supervisorAccess?: { salt: string; verifier: string };
 }

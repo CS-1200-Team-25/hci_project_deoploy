@@ -2,6 +2,7 @@ import type { ExperimentSession } from '../types/experiment';
 import { experimentSequences } from './sequences';
 import { PILOT_CONFIGURATION } from './conditions';
 import { getTask } from '../tasks/registry';
+import { validSurveyState } from './surveys';
 
 export const SESSION_STORAGE_KEY = 'planning-pilot-session-v1';
 type SessionStorage = Pick<Storage, 'getItem' | 'setItem'>;
@@ -52,9 +53,9 @@ export function loadSession(storage: SessionStorage = localStorage): ExperimentS
     || !Number.isFinite(value.startedAt) || !Number.isFinite(value.lastSavedAt)
     || !Number.isInteger(value.currentTrialIndex) || (value.currentTrialIndex as number) < 0 || (value.currentTrialIndex as number) > 2
     || !Array.isArray(value.trials) || value.trials.length !== 3 || !Array.isArray(value.events)
-    || !isRecord(value.postTaskSurveys)
+    || !isRecord(value.postTaskSurveys) || !isRecord(value.postTaskSurveyDrafts) || !isRecord(value.finalSurveyDraft)
     || !isRecord(value.configuration) || !isRecord(value.configuration.conditions)
-    || !(['version', 'sequenceVersion', 'scenarioVersion', 'policyVersion'] as const).every((key) =>
+    || !(['version', 'sequenceVersion', 'scenarioVersion', 'policyVersion', 'surveyVersion'] as const).every((key) =>
       (value.configuration as Record<string, unknown>)[key] === PILOT_CONFIGURATION[key])) {
     throw new Error('Stored session is incompatible or damaged. The supervisor must preserve it before starting another session.');
   }
@@ -107,6 +108,7 @@ export function loadSession(storage: SessionStorage = localStorage): ExperimentS
       : currentIndex === 2 && value.trials.every(isEnded);
   if (!assignmentsValid || !eventsValid || !configurationValid
     || !phaseValid
+    || !validSurveyState(value as unknown as ExperimentSession)
     || (value.phase !== 'welcome' && !Number.isFinite(value.consentedAt))
     || (value.phase === 'task' && activeTrial.status !== 'active')) {
     throw new Error('Stored session is incompatible or damaged. The supervisor must preserve it before starting another session.');

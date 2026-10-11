@@ -12,9 +12,9 @@ orders; each task and condition appears 12 times in each position and every
 task-condition pairing appears 12 times over the complete allocation cycle.
 Local storage does not coordinate allocations between browsers or supervisors.
 
-`ExperimentController` owns participant navigation. Implemented phases are
-welcome/consent, shared instructions and first-task reveal. Later phases remain
-typed contracts: post-task survey, final survey and completion. Birthday planning
+`ExperimentController` owns all participant navigation: welcome/consent,
+instructions, three task/post-task-survey pairs, final survey and completion.
+Birthday planning
 now supports catalog selection, quantity edits, scheduled activity moves and
 removal. Its public task contract validates 12 food servings, 12 drink servings,
 one activity, the $300 budget and activities within 14:00–17:00 without overlap.
@@ -53,7 +53,19 @@ final plan, validation, elapsed milliseconds and successful completion time
 exactly once. Trial outcomes distinguish successful completion from exceptional
 unsuccessful supervisor termination with a required reason and elapsed duration.
 Unsuccessful durations never populate successful completion time. Ended trials
-cannot be edited or completed again and enter the reserved post-task phase.
+cannot be edited or completed again. Both outcomes require post-task answers
+before the controller reveals the next assigned scenario and starts its timer.
+
+Survey instrument version1 is a fixed pilot draft, not a recruitment-approved
+instrument. Helpfulness uses1=not at all helpful and7=extremely helpful;
+interruption uses1=not at all interruptive and7=extremely interruptive. Both
+responses are required. Helpfulness can instead be the distinct string
+`not-applicable` when that trial has no recorded assistance-display event.
+Drafts persist with ordered events. Submitted responses cannot be changed or
+submitted twice. The final instrument requires a trial experience by task/order
+or explicit no preference, plus an optional explanation. It reveals no condition
+names. Completion requires all three ended trials and their required surveys.
+Recovery validates rating ranges, display-linked eligibility and phase gates.
 
 The supervisor sets an access code at session setup. Only a verified code issues
 an in-memory authorization for exceptional termination of that session. Codes
@@ -82,4 +94,5 @@ Scenario, sequence and condition-policy identifiers are versioned pilot drafts.
 Baseline's disabled threshold is serialized explicitly as `null` alongside
 `proactive: false`. Study knobs and content must be frozen after piloting before
 recruitment. See `ARCHITECTURE.md` and GitHub issues #3 and #4 for the full
-contract and issues #4–#7 for the implemented slices.
+contract and issues #4–#8 for the implemented slices.
+

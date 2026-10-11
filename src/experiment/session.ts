@@ -3,6 +3,7 @@ import { PILOT_CONFIGURATION } from './conditions';
 import { experimentSequences } from './sequences';
 import { recordEvent } from './logger';
 import { getTask } from '../tasks/registry';
+import type { TaskResolver } from '../tasks/registry';
 import type { TaskAction } from '../types/task';
 import { isSupervisorAuthorized } from './supervisor';
 import type { SupervisorAuthorization } from './supervisor';
@@ -33,6 +34,8 @@ export function createSession(participantId: string, sequenceIndex: number, now 
     events: [],
     lastSavedAt: now,
     postTaskSurveys: {},
+    postTaskSurveyDrafts: {},
+    finalSurveyDraft: { explanation: '' },
   }, 'session_started', { sequenceIndex, sequenceId: sequence.id }, now);
 }
 
@@ -42,9 +45,20 @@ export function consentToSession(session: ExperimentSession, now = Date.now()): 
   return recordEvent(consented, 'instructions_viewed', {}, now);
 }
 
-export function revealTask(session: ExperimentSession, now = Date.now()): ExperimentSession {
+export function revealTask(session: ExperimentSession, now = Date.now(), resolve: TaskResolver = getTask): ExperimentSession {
   if (session.phase !== 'instructions' || session.consentedAt === undefined) return session;
-  const definition = getTask(session.trials[session.currentTrialIndex].task);
+  return startAssignedTask(session, now, resolve);
+}
+
+/** Public task-adapter boundary used by the controller and protocol verification. */
+export function startAssignedTask(session: ExperimentSession, now = Date.now(), resolve: TaskResolver = getTask): ExperimentSession {
+  const trial = session.trials[session.currentTrialIndex];
+  if (trial.status !== 'pending' || session.consentedAt === undefined
+    || (session.phase !== 'instructions' && session.phase !== 'post-task-survey')) return session;
+  if (session.currentTrialIndex === 0 && session.phase !== 'instructions') return session;
+  if (session.currentTrialIndex > 0 && (session.phase !== 'post-task-survey' || session.trials.slice(0, session.currentTrialIndex)
+    .some((previous) => (previous.status !== 'completed' && previous.status !== 'terminated') || !session.postTaskSurveys[previous.id]))) return session;
+  const definition = resolve(trial.task);
   return recordEvent({
     ...session,
     phase: 'task',
@@ -54,9 +68,9 @@ export function revealTask(session: ExperimentSession, now = Date.now()): Experi
   }, 'task_started', { scenarioVersion: session.configuration.scenarioVersion }, now);
 }
 
-export function updateTaskState(session: ExperimentSession, taskState: unknown, action: TaskAction, now = Date.now()): ExperimentSession {
+export function updateTaskState(session: ExperimentSession, taskState: unknown, action: TaskAction, now = Date.now(), resolve: TaskResolver = getTask): ExperimentSession {
   const trial = session.trials[session.currentTrialIndex];
-  const definition = getTask(trial.task);
+  const definition = resolve(trial.task);
   if (session.phase !== 'task' || trial.status !== 'active' || !definition) return session;
   if (!definition.isState(taskState)) throw new Error('Invalid task state.');
   return recordEvent({
@@ -67,9 +81,9 @@ export function updateTaskState(session: ExperimentSession, taskState: unknown, 
   }, action.type, { ...action.payload, stateRevision: trial.stateRevision + 1 }, now);
 }
 
-export function submitTask(session: ExperimentSession, now = Date.now()): ExperimentSession {
+export function submitTask(session: ExperimentSession, now = Date.now(), resolve: TaskResolver = getTask): ExperimentSession {
   const trial = session.trials[session.currentTrialIndex];
-  const definition = getTask(trial.task);
+  const definition = resolve(trial.task);
   if (session.phase !== 'task' || trial.status !== 'active' || !definition || trial.startedAt === undefined) return session;
   const validation = definition.validate(trial.taskState);
   const attempt = { timestamp: now, stateRevision: trial.stateRevision, validation };
@@ -91,11 +105,11 @@ export function submitTask(session: ExperimentSession, now = Date.now()): Experi
   return validation.isComplete ? recordEvent(next, 'task_completed', { outcome: 'successful', elapsedMs, successfulCompletionMs: elapsedMs }, now) : next;
 }
 
-export function terminateTask(session: ExperimentSession, authorization: SupervisorAuthorization, reason: string, now = Date.now()): ExperimentSession {
+export function terminateTask(session: ExperimentSession, authorization: SupervisorAuthorization, reason: string, now = Date.now(), resolve: TaskResolver = getTask): ExperimentSession {
   if (!isSupervisorAuthorized(session, authorization)) throw new Error('Supervisor authorization is required.');
   if (!reason.trim()) throw new Error('A termination reason is required.');
   const trial = session.trials[session.currentTrialIndex];
-  const definition = getTask(trial.task);
+  const definition = resolve(trial.task);
   if (session.phase !== 'task' || trial.status !== 'active' || trial.startedAt === undefined || !definition) return session;
   const elapsedMs = Math.max(0, now - trial.startedAt);
   const next: ExperimentSession = {

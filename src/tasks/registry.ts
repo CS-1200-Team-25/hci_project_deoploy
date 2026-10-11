@@ -23,3 +23,4 @@ const implementedTasks: Partial<Record<TaskId, ExperimentTask<unknown>>> = {
   schedule: registerTask(scheduleTask),
 };
 export function getTask(taskId: TaskId) { return implementedTasks[taskId]; }
+export type TaskResolver = typeof getTask;

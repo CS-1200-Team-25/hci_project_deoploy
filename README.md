@@ -2,7 +2,7 @@
 
 React + TypeScript + Vite prototype for a supervised planning pilot. The current
 implementation assigns a participant session, collects draft consent, displays
-shared instructions, supports all three timed planning tasks and restores progress
+shared instructions, supports all three timed planning tasks and required surveys, and restores progress
 after a reload. `ARCHITECTURE.md` defines the full study contract; `CONTEXT.md`
 describes the implemented domain and remaining work.
 
@@ -52,8 +52,8 @@ and scheduled activity starts. Submission checks guest coverage, budget and
 scheduling requirements. Failed attempts keep editing and timing active; a
 passing attempt freezes the final plan and successful completion time. A
 supervisor-ended trial retains its unsuccessful outcome and elapsed duration
-without a successful completion time. Both outcomes stop at the reserved
-post-task phase until surveys are implemented.
+without a successful completion time. Both outcomes require a post-task survey
+before the assigned next task opens.
 
 Weekend planning includes fixed entry fees, daily opening hours, one-night
 lodging and prepaid transport choices. The chosen transport exposes a complete
@@ -74,8 +74,16 @@ portion. Optional meals, rest, exercise and buffers are not required, but all
 selected blocks must fit the same bounds and conflict rules. Fixed commitments
 are read-only and altered saved commitments block recovery.
 
-Interventions and surveys remain reserved for later tickets. The assistant panel
-remains neutral. Consent and scenario wording are internal pilot drafts. Earlier
+After each trial, answer helpfulness and interruption on fixed1–7 scales with
+visible endpoint anchors. Helpfulness has a distinct not-applicable option when
+no assistance was displayed. Draft answers persist immediately and reload
+restores them. After three task/survey pairs, select a preferred trial experience
+by task/order, or no preference, with an optional explanation. Final submission
+reaches completion; ended plans and submitted surveys remain immutable.
+
+Survey and consent wording are internal pilot drafts, not recruitment-approved
+instruments. Assistance generation remains reserved for a later ticket, and the
+assistant panel stays neutral. Earlier
 scaffold sessions without implemented task data are preserved if they cannot
 be safely recovered; no silent migration changes their assignment or timer.
 
@@ -89,7 +97,8 @@ npm test
 Playwright runs the participant-visible setup, consent, instructions, scenario
 reveal, task editing/submission and reload flow with a controlled clock. Recorded outcomes are inspected
 through the public session persistence interface. Public session-contract tests
-verify all 36 sequences and duplicate-action guards. Typechecking and the
+verify all 36 sequences, duplicate-action guards and the complete protocol using
+replaceable task adapters independently of workspace rendering. Typechecking and the
 production build remain required checks.
 
 ## Layout

@@ -11,6 +11,9 @@ import { ValidationFeedback } from './ValidationFeedback';
 import { ValidationToast } from './ValidationToast';
 import { configureSupervisorAccess } from '../../experiment/supervisor';
 import { SupervisorControls } from './SupervisorControls';
+import { assistanceWasDisplayed, setFinalSurveyDraft, setPostTaskSurveyDraft, submitFinalSurvey, submitPostTaskSurvey } from '../../experiment/surveys';
+import { PostTaskSurveyForm } from './PostTaskSurveyForm';
+import { FinalSurveyForm } from './FinalSurveyForm';
 
 export function ExperimentController() {
   const [recovery] = useState(() => {
@@ -124,7 +127,7 @@ export function ExperimentController() {
   return (
     <ExperimentShell title={session.phase === 'task' ? scenario.title : 'Planning session'}
       trialIndex={trial.startedAt !== undefined ? session.currentTrialIndex : undefined} startedAt={trial.startedAt} completedAt={trial.completedAt}
-      completionControl={session.phase === 'task' && definition ? { onComplete: completeTask } : session.phase === 'post-task-survey' ? false : undefined}>
+      completionControl={session.phase === 'task' && definition ? { onComplete: completeTask } : false}>
       {error && <p role="alert">{error}</p>}
       {session.phase === 'welcome' && <>
         <h2>Welcome to the planning pilot</h2>
@@ -153,10 +156,15 @@ export function ExperimentController() {
       </>}
       {session.phase === 'post-task-survey' && <>
         <h2>{trial.outcome === 'successful' ? 'Task submitted successfully' : 'Trial ended by supervisor'}</h2>
-        <p>Your final plan and outcome have been saved. The post-task survey will appear here when it is implemented.</p>
+        <p>Your final plan and outcome have been saved. Answer both questions to continue.</p>
         {trial.terminationReason && <p>Termination reason: {trial.terminationReason}</p>}
         <ValidationFeedback result={trial.finalValidation} />
+        <PostTaskSurveyForm draft={session.postTaskSurveyDrafts[trial.id] ?? {}} allowNotApplicable={!assistanceWasDisplayed(session, trial.id)}
+          onChange={(draft) => commit(setPostTaskSurveyDraft(sessionRef.current!, draft))} onSubmit={() => commit(submitPostTaskSurvey(sessionRef.current!))} />
       </>}
+      {session.phase === 'final-survey' && <FinalSurveyForm draft={session.finalSurveyDraft} trials={session.trials}
+        onChange={(draft) => commit(setFinalSurveyDraft(sessionRef.current!, draft))} onSubmit={() => commit(submitFinalSurvey(sessionRef.current!))} />}
+      {session.phase === 'complete' && <><h2>Session complete</h2><p>Thank you. Your session records are saved in this browser. Tell the supervisor you have finished.</p></>}
       <details>
         <summary>Supervisor storage tools</summary>
         <p>For disposable QA sessions, edit or remove the saved session in browser storage, then reload it here. Preserve study data first. Reloading discards unsaved in-memory changes.</p>
