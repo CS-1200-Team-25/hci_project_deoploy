@@ -14,6 +14,11 @@ import { SupervisorControls } from './SupervisorControls';
 import { assistanceWasDisplayed, setFinalSurveyDraft, setPostTaskSurveyDraft, submitFinalSurvey, submitPostTaskSurvey } from '../../experiment/surveys';
 import { PostTaskSurveyForm } from './PostTaskSurveyForm';
 import { FinalSurveyForm } from './FinalSurveyForm';
+import { abandonSelection, beginGeneration, finishGeneration, respondToIntervention } from '../../experiment/generation';
+import { validGenerationConfiguration } from '../../agent/generation';
+import type { GenerationConfiguration } from '../../agent/generation';
+import type { TaskAction } from '../../types/task';
+import { GenerationStatus } from './GenerationStatus';
 
 export function ExperimentController() {
   const [recovery] = useState(() => {
@@ -31,6 +36,8 @@ export function ExperimentController() {
   const [error, setError] = useState(recovery.error);
   const [supervisorCode, setSupervisorCode] = useState('');
   const creating = useRef(false);
+  const generationConfig = useRef<GenerationConfiguration | null>(null);
+  const pendingRequest = useRef<{ id: string; trialId: string; revision: number; controller: AbortController; timer: ReturnType<typeof setTimeout> } | null>(null);
   const [validationToast, setValidationToast] = useState<{ attempt: number; errors: string[] } | null>(null);
 
   function reloadIfStorageChanged() {
@@ -46,6 +53,14 @@ export function ExperimentController() {
 
   function commit(next: ExperimentSession) {
     if (reloadIfStorageChanged()) return;
+    const pending = pendingRequest.current;
+    const active = next.trials[next.currentTrialIndex];
+    if (pending && (next.phase !== 'task' || active.id !== pending.trialId || active.stateRevision !== pending.revision)) {
+      clearTimeout(pending.timer);
+      pending.controller.abort();
+      pendingRequest.current = null;
+      next = finishGeneration(next, pending.id, 'canceled', undefined, 'task-changed');
+    }
     let saved = next;
     try {
       saved = saveSession(next);
@@ -73,12 +88,92 @@ export function ExperimentController() {
       if (current) commit(recordEvent(current, 'visibility_changed', { visibility }));
     }
     document.addEventListener('visibilitychange', visibilityChanged);
+    function pageHidden() {
+      const pending = pendingRequest.current;
+      if (!pending || !sessionRef.current) return;
+      pendingRequest.current = null;
+      clearTimeout(pending.timer);
+      pending.controller.abort();
+      commit(finishGeneration(sessionRef.current, pending.id, 'interrupted', undefined, 'page-unload'));
+    }
+    window.addEventListener('pagehide', pageHidden);
     window.addEventListener('focus', reloadIfStorageChanged);
     return () => {
+      if (pendingRequest.current) {
+        const pending = pendingRequest.current;
+        pendingRequest.current = null;
+        clearTimeout(pending.timer);
+        pending.controller.abort();
+      }
+      window.removeEventListener('pagehide', pageHidden);
       document.removeEventListener('visibilitychange', visibilityChanged);
       window.removeEventListener('focus', reloadIfStorageChanged);
     };
   }, [recovery]);
+
+  async function editTask(state: unknown, action: TaskAction) {
+    if (reloadIfStorageChanged()) return;
+    const previous = sessionRef.current!;
+    const next = updateTaskState(previous, state, action);
+    commit(next);
+    const selection = next.trials[next.currentTrialIndex].agentHistory?.selections.at(-1);
+    if (!selection || selection.stateRevision !== next.trials[next.currentTrialIndex].stateRevision
+      || previous.trials[previous.currentTrialIndex].agentHistory?.selections.some((candidate) => candidate.id === selection.id)) return;
+    let config = generationConfig.current;
+    if (!config) {
+      try {
+        const response = await fetch('/api/interventions/config', { signal: AbortSignal.timeout(5000) });
+        const value: unknown = await response.json();
+        if (!response.ok || !validGenerationConfiguration(value)) throw new Error('configuration-unavailable');
+        config = value;
+        generationConfig.current = config;
+      } catch {
+        const current = sessionRef.current!;
+        commit(abandonSelection(current, selection.id, 'configuration-unavailable'));
+        return;
+      }
+    }
+    const started = beginGeneration(sessionRef.current!, selection.id, config);
+    if (started === sessionRef.current) {
+      commit(abandonSelection(sessionRef.current!, selection.id, 'selection-no-longer-current'));
+      return;
+    }
+    const trial = started.trials[started.currentTrialIndex];
+    const record = trial.agentHistory!.requests!.at(-1)!;
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      if (pendingRequest.current?.id !== record.id) return;
+      pendingRequest.current = null;
+      controller.abort();
+      commit(finishGeneration(sessionRef.current!, record.id, 'timeout', undefined, 'finite-timeout'));
+    }, config.timeoutMs);
+    pendingRequest.current = { id: record.id, trialId: trial.id, revision: trial.stateRevision, controller, timer };
+    commit(started);
+    try {
+      const response = await fetch('/api/interventions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(record.request), signal: controller.signal });
+      let value: unknown;
+      try { value = await response.json(); }
+      catch {
+        if (pendingRequest.current?.id !== record.id) return;
+        clearTimeout(timer);
+        pendingRequest.current = null;
+        commit(finishGeneration(sessionRef.current!, record.id, 'invalid', undefined, 'invalid-json'));
+        return;
+      }
+      if (pendingRequest.current?.id !== record.id) return;
+      clearTimeout(timer);
+      pendingRequest.current = null;
+      const providerError = typeof value === 'object' && value !== null && 'error' in value ? String(value.error) : '';
+      const status = response.ok ? 'succeeded' : providerError === 'provider-timeout' ? 'timeout'
+        : providerError === 'invalid-provider-response' ? 'invalid' : 'failed';
+      commit(finishGeneration(sessionRef.current!, record.id, status, value, response.ok ? undefined : providerError || `http-${response.status}`));
+    } catch {
+      if (pendingRequest.current?.id !== record.id) return;
+      clearTimeout(timer);
+      pendingRequest.current = null;
+      commit(finishGeneration(sessionRef.current!, record.id, 'failed', undefined, 'transport-or-json-error'));
+    }
+  }
 
   if (!session) {
     return (
@@ -126,6 +221,8 @@ export function ExperimentController() {
 
   return (
     <ExperimentShell title={session.phase === 'task' ? scenario.title : 'Planning session'}
+      assistant={{ interventions: trial.agentHistory?.interventions, onRespond: session.phase === 'task'
+        ? (id, response) => commit(respondToIntervention(sessionRef.current!, id, response)) : undefined }}
       trialIndex={trial.startedAt !== undefined ? session.currentTrialIndex : undefined} startedAt={trial.startedAt} completedAt={trial.completedAt}
       completionControl={session.phase === 'task' && definition ? { onComplete: completeTask } : false}>
       {error && <p role="alert">{error}</p>}
@@ -151,7 +248,7 @@ export function ExperimentController() {
         <ValidationFeedback result={trial.submissionAttempts?.at(-1)?.validation} announceErrors={false} />
         {validationToast && <ValidationToast key={validationToast.attempt} errors={validationToast.errors}
           onDismiss={() => setValidationToast(null)} />}
-        <TaskRenderer taskId={trial.task} state={trial.taskState} onChange={(state, action) => commit(updateTaskState(sessionRef.current!, state, action))} />
+        <TaskRenderer taskId={trial.task} state={trial.taskState} onChange={editTask} />
         {definition && <SupervisorControls session={session} onTerminate={(authorization, reason) => commit(terminateTask(sessionRef.current!, authorization, reason))} />}
       </>}
       {session.phase === 'post-task-survey' && <>
@@ -165,6 +262,7 @@ export function ExperimentController() {
       {session.phase === 'final-survey' && <FinalSurveyForm draft={session.finalSurveyDraft} trials={session.trials}
         onChange={(draft) => commit(setFinalSurveyDraft(sessionRef.current!, draft))} onSubmit={() => commit(submitFinalSurvey(sessionRef.current!))} />}
       {session.phase === 'complete' && <><h2>Session complete</h2><p>Thank you. Your session records are saved in this browser. Tell the supervisor you have finished.</p></>}
+      <GenerationStatus events={session.events} />
       <details>
         <summary>Supervisor storage tools</summary>
         <p>For disposable QA sessions, edit or remove the saved session in browser storage, then reload it here. Preserve study data first. Reloading discards unsaved in-memory changes.</p>

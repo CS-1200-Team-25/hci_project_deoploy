@@ -1,9 +1,9 @@
-import type { ExperimentEvent, ExperimentSession } from '../types/experiment';
+import type { ExperimentEvent, ExperimentSession, Trial } from '../types/experiment';
 
 /** Append only; existing records retain their identity through saves and recovery. */
-export function recordEvent(session: ExperimentSession, eventType: string, payload: Record<string, unknown> = {}, now = Date.now()): ExperimentSession {
-  const trial = session.phase === 'task' || session.phase === 'post-task-survey'
-    ? session.trials[session.currentTrialIndex] : undefined;
+export function recordEvent(session: ExperimentSession, eventType: string, payload: Record<string, unknown> = {}, now = Date.now(), sourceTrial?: Trial): ExperimentSession {
+  const trial = sourceTrial ?? (session.phase === 'task' || session.phase === 'post-task-survey'
+    ? session.trials[session.currentTrialIndex] : undefined);
   const event: ExperimentEvent = {
     id: crypto.randomUUID(),
     sequence: session.events.length + 1,

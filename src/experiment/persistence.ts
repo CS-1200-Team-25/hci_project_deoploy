@@ -3,6 +3,8 @@ import { experimentSequences } from './sequences';
 import { PILOT_CONFIGURATION } from './conditions';
 import { getTask } from '../tasks/registry';
 import { validSurveyState } from './surveys';
+import { validGenerationConfiguration, validGeneratedAdvice } from '../agent/generation';
+import type { GenerationRecord } from '../agent/generation';
 
 export const SESSION_STORAGE_KEY = 'planning-pilot-session-v1';
 type SessionStorage = Pick<Storage, 'getItem' | 'setItem'>;
@@ -24,10 +26,10 @@ function isValidation(value: unknown): value is Record<string, unknown> & { isCo
     && value.isComplete === (value.errors.length === 0);
 }
 
-function validAgentHistory(trial: Record<string, unknown>): boolean {
+function validAgentHistory(trial: Record<string, unknown>, sessionId: string): boolean {
   if (trial.agentHistory === undefined) return true;
   const history = trial.agentHistory;
-  if (trial.task !== 'birthday' || trial.status === 'pending' || !isRecord(history)
+  if (trial.status === 'pending' || !isRecord(history)
     || !Array.isArray(history.selections) || !Array.isArray(history.displays)
     || !Array.isArray(history.inFlightSignalIds) || !history.inFlightSignalIds.every((id) => typeof id === 'string')) return false;
   const ids = new Set<string>();
@@ -47,7 +49,53 @@ function validAgentHistory(trial: Record<string, unknown>): boolean {
     if (selection.resolvedAt === undefined) reserved.add(selection.signal.id);
     return true;
   }) && history.displays.every((display) => isRecord(display) && typeof display.signalId === 'string'
-    && Number.isFinite(display.timestamp) && (display.timestamp as number) >= (trial.startedAt as number));
+    && Number.isFinite(display.timestamp) && (display.timestamp as number) >= (trial.startedAt as number))
+    && validGenerationHistory(trial, history, sessionId);
+}
+
+function validGenerationHistory(trial: Record<string, unknown>, history: Record<string, unknown>, sessionId: string): boolean {
+  if (history.requests === undefined && history.interventions === undefined) return true;
+  if (!Array.isArray(history.requests) || !Array.isArray(history.interventions ?? [])) return false;
+  const requestIds = new Set<string>();
+  const requestSelections = new Set<string>();
+  let pending = 0;
+  if (!history.requests.every((request) => {
+    if (!isRecord(request) || !validGenerationConfiguration(request) || typeof request.id !== 'string' || requestIds.has(request.id)
+      || !isRecord(request.request) || request.request.requestId !== request.id || request.request.trialId !== trial.id
+      || request.request.sessionId !== sessionId || request.request.taskId !== trial.task
+      || !Number.isSafeInteger(request.request.stateRevision) || (request.request.stateRevision as number) > (trial.stateRevision as number)
+      || !isRecord(request.request.context) || request.request.context.taskId !== trial.task || !isRecord(request.request.context.summary)
+      || !Number.isFinite(request.requestedAt) || (request.requestedAt as number) < (trial.startedAt as number)
+      || !['pending', 'succeeded', 'failed', 'canceled', 'timeout', 'invalid', 'interrupted', 'stale'].includes(String(request.status))) return false;
+    const requested = request.request;
+    const selection = (history.selections as Record<string, unknown>[]).find((selection) => selection.id === requested.selectionId);
+    if (!selection || requestSelections.has(requested.selectionId as string) || selection.stateRevision !== request.request.stateRevision || JSON.stringify(selection.signal) !== JSON.stringify(request.request.signal)) return false;
+    requestSelections.add(requested.selectionId as string);
+    requestIds.add(request.id);
+    if (request.status === 'pending') {
+      pending++;
+      return trial.status === 'active' && request.finishedAt === undefined && request.latencyMs === undefined && request.response === undefined;
+    }
+    return Number.isFinite(request.finishedAt) && (request.finishedAt as number) >= (request.requestedAt as number)
+      && request.latencyMs === (request.finishedAt as number) - (request.requestedAt as number)
+      && (request.status !== 'succeeded' || validGeneratedAdvice(request.response, request as unknown as GenerationRecord));
+  }) || pending > 1) return false;
+  const pendingSignalIds = (history.requests as GenerationRecord[]).filter((request) => request.status === 'pending').map((request) => request.request.signal.id);
+  if (JSON.stringify(history.inFlightSignalIds) !== JSON.stringify(pendingSignalIds)) return false;
+  const adviceIds = new Set<string>();
+  return (history.interventions as unknown[] ?? []).every((advice) => {
+    if (!isRecord(advice) || typeof advice.id !== 'string' || adviceIds.has(advice.id)) return false;
+    adviceIds.add(advice.id);
+    const request = (history.requests as GenerationRecord[]).find((request) => request.id === advice.requestId);
+    if (!request || request.status !== 'succeeded' || !validGeneratedAdvice(request.response, request)
+      || advice.selectionId !== request.request.selectionId || advice.signalId !== request.request.signal.id
+      || advice.message !== request.response.message || advice.type !== request.response.type
+      || (advice.target ?? null) !== request.response.target || advice.timestamp !== request.finishedAt
+      || !(history.displays as { signalId: string; timestamp: number }[]).some((display) => display.signalId === advice.signalId && display.timestamp === advice.timestamp)) return false;
+    return advice.response === undefined ? advice.respondedAt === undefined
+      : ['acknowledged', 'dismissed'].includes(String(advice.response)) && Number.isFinite(advice.respondedAt)
+        && (advice.respondedAt as number) >= (advice.timestamp as number);
+  });
 }
 
 function validRecordedOutcome(trial: Record<string, unknown>, finalPlanIsValid: (state: unknown) => boolean) {
@@ -105,7 +153,7 @@ export function loadSession(storage: SessionStorage = localStorage): ExperimentS
     const definition = getTask(sequence.trials[index].task);
     if (trial.status !== 'pending' && definition && (trial.taskVersion !== definition.version || !definition.isState(trial.taskState))) return false;
     if (!validRecordedOutcome(trial, (state) => definition ? definition.isState(state) : state !== undefined)) return false;
-    if (!validAgentHistory(trial)) return false;
+    if (!validAgentHistory(trial, value.sessionId as string)) return false;
     return true;
   });
   const eventIds = new Set<string>();

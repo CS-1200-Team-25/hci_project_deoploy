@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "provider": "node --env-file-if-exists=.env server/provider.mjs",
+    "test:provider": "node --test server/provider.test.mjs",
     "typecheck": "tsc --noEmit",
     "build": "npm run typecheck && vite build",
     "preview": "vite preview",

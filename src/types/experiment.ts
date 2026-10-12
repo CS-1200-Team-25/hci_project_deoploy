@@ -1,5 +1,6 @@
 import type { ValidationResult } from './task';
 import type { AgentSignal } from './agent';
+import type { GenerationRecord, ShownIntervention } from '../agent/generation';
 
 export interface SelectionHistory {
   id: string;
@@ -37,7 +38,8 @@ export interface Trial {
   finalValidation?: ValidationResult;
   elapsedMs?: number;
   successfulCompletionMs?: number;
-  agentHistory?: { selections: SelectionHistory[]; displays: { signalId: string; timestamp: number }[]; inFlightSignalIds: string[] };
+  agentHistory?: { selections: SelectionHistory[]; displays: { signalId: string; timestamp: number }[]; inFlightSignalIds: string[];
+    requests?: GenerationRecord[]; interventions?: ShownIntervention[] };
 }
 
 export interface PilotConfiguration {

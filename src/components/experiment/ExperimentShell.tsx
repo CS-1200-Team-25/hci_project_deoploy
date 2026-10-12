@@ -1,11 +1,13 @@
 import { AgentPanel } from '../agent/AgentPanel';
+import type { AgentPanelProps } from '../agent/AgentPanel';
 import { TaskHeader } from './TaskHeader';
 import type { TaskHeaderProps } from './TaskHeader';
 import type { ReactNode } from 'react';
 
-export function ExperimentShell({ children, completionControl, ...header }: TaskHeaderProps & {
+export function ExperimentShell({ children, completionControl, assistant, ...header }: TaskHeaderProps & {
   children: ReactNode;
   completionControl?: { onComplete(): void } | false;
+  assistant?: AgentPanelProps;
 }) {
   return (
     <div className="study-page">
@@ -20,7 +22,7 @@ export function ExperimentShell({ children, completionControl, ...header }: Task
           <section className="task-workspace" aria-label="Planning workspace">
             {children}
           </section>
-          <AgentPanel />
+          <AgentPanel {...assistant} />
         </div>
         <footer className="task-footer">
           <p>Complete your plan before moving on.</p>

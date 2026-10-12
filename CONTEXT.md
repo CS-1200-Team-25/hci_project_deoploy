@@ -119,6 +119,20 @@ reserves its signal until a meaningful edit resolves it; recovery retains that
 reservation without replay. Reservations are distinct from real provider
 requests and actual display history. Future generation owns reservation release
 on failure/completion/revalidation and records exposure only when advice is
-shown. This slice creates no requests, display timestamps or exposure events;
-the panel remains neutral. Versioned configuration, selection integrity and
-display-history shape are checked on recovery.
+shown. Selected birthday signals now use a loopback server to request structured
+OpenAI advice. Baseline makes no generation requests. Model, prompt/schema,
+output limit and finite timeout are shared across active conditions and recorded
+with every request; condition is never sent to the provider. The provider key
+stays on the server. See `docs/provider.md` for startup and live smoke checks.
+
+Generation permits one pending request per trial. Every meaningful edit cancels
+its prior revision; completion, termination and reload also end pending requests.
+Late responses cannot display. Responses are validated against selection and
+configuration, then current revision, unresolved signal and display cooldowns
+are rechecked. Failures release reservations and log explicit outcomes without
+fallback advice. Actual display alone updates cooldowns and survey eligibility.
+Selections, requests, responses and actual shown text are separate retained
+records. Reload restores shown history without creating another exposure or
+replaying generation. Acknowledgement and dismissal record explicit participant
+responses; lack of acknowledgement is not classified as ignoring. Recovery
+checks generation identity and displayed-history integrity.

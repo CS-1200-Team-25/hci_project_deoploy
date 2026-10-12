@@ -8,6 +8,7 @@ import type { TaskAction } from '../types/task';
 import { isSupervisorAuthorized } from './supervisor';
 import type { SupervisorAuthorization } from './supervisor';
 import { evaluateCommittedEdit } from './interventions';
+import { cancelPendingGenerations, finishGeneration } from './generation';
 
 /** Sequence indices are one-based, allocated by the supervisor across sessions. */
 export function createSession(participantId: string, sequenceIndex: number, now = Date.now()): ExperimentSession {
@@ -81,7 +82,8 @@ export function updateTaskState(session: ExperimentSession, taskState: unknown, 
       ? { ...candidate, taskState: structuredClone(taskState), stateRevision: candidate.stateRevision + 1 }
       : candidate),
   }, action.type, { ...action.payload, stateRevision: trial.stateRevision + 1 }, now);
-  return trial.task === 'birthday' ? evaluateCommittedEdit(next, definition.evaluateSignals(taskState), now) : next;
+  const canceled = cancelPendingGenerations(next, 'task-edited', now);
+  return trial.task === 'birthday' ? evaluateCommittedEdit(canceled, definition.evaluateSignals(taskState), now) : canceled;
 }
 
 export function submitTask(session: ExperimentSession, now = Date.now(), resolve: TaskResolver = getTask): ExperimentSession {
@@ -105,7 +107,7 @@ export function submitTask(session: ExperimentSession, now = Date.now(), resolve
       } : {}),
     } : candidate),
   };
-  return validation.isComplete ? recordEvent(next, 'task_completed', { outcome: 'successful', elapsedMs, successfulCompletionMs: elapsedMs }, now) : next;
+  return validation.isComplete ? recordEvent(cancelPendingGenerations(next, 'task-completed', now), 'task_completed', { outcome: 'successful', elapsedMs, successfulCompletionMs: elapsedMs }, now) : next;
 }
 
 export function terminateTask(session: ExperimentSession, authorization: SupervisorAuthorization, reason: string, now = Date.now(), resolve: TaskResolver = getTask): ExperimentSession {
@@ -124,10 +126,15 @@ export function terminateTask(session: ExperimentSession, authorization: Supervi
       finalValidation: definition.validate(candidate.taskState),
     } : candidate),
   };
-  return recordEvent(next, 'task_terminated', { outcome: 'unsuccessful', terminationReason: reason.trim(), elapsedMs }, now);
+  return recordEvent(cancelPendingGenerations(next, 'task-terminated', now), 'task_terminated', { outcome: 'unsuccessful', terminationReason: reason.trim(), elapsedMs }, now);
 }
 
 export function recoverSession(session: ExperimentSession, now = Date.now()): ExperimentSession {
+  for (const trial of session.trials) {
+    for (const request of trial.agentHistory?.requests ?? []) {
+      if (request.status === 'pending') session = finishGeneration(session, request.id, 'interrupted', undefined, 'reload', now);
+    }
+  }
   return recordEvent(session, 'session_recovered', {
     previousSavedAt: session.lastSavedAt,
     recoveryGapMs: Math.max(0, now - session.lastSavedAt),
