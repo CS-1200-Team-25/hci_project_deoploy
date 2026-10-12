@@ -28,6 +28,7 @@ export function beginGeneration(session: ExperimentSession, selectionId: string,
   const selection = history?.selections.find((candidate) => candidate.id === selectionId);
   if (session.phase !== 'task' || trial.status !== 'active' || !session.configuration.conditions[trial.condition].proactive
     || !history || !selection || selection.resolvedAt !== undefined || selection.stateRevision !== trial.stateRevision
+    || history.interventions?.some(advice => !advice.response)
     || history.requests?.some((request) => request.status === 'pending') || history.requests?.some((request) => request.request.selectionId === selectionId)) return session;
   const requestId = crypto.randomUUID();
   const request = { requestId, sessionId: session.sessionId, trialId: trial.id, taskId: trial.task, stateRevision: trial.stateRevision,

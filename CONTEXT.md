@@ -148,6 +148,10 @@ suggestions never time out and close only on explicit acknowledgement or
 dismissal. Unanswered suggestions persist through reload; successful task
 submission requires responding to them first. Editing remains available.
 Responded suggestions remain in the session/export records, not on screen.
+Unanswered suggestions block new edit-triggered selections and generation
+requests as well as idle evaluations, including after recovery. Edits still log
+signal evaluations and resolutions. Responding to the last outstanding suggestion
+starts a fresh30-second idle period; display cooldowns continue to use shown times.
 
 Session exports use `planning-pilot-export-v1`: a lossless session snapshot
 (excluding the supervisor verifier), original ordered events, explicit millisecond

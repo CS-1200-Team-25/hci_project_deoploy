@@ -8,6 +8,7 @@ export interface DecisionContext {
   inFlightSignalIds: string[];
   reservedSignalIds: string[];
   resolvedSignalIds: string[];
+  hasUnansweredIntervention?: boolean;
   displayCooldowns?: { globalMs: number; signalMs: number };
 }
 
@@ -31,6 +32,7 @@ export function evaluateInterventions(
     const finalScore = Math.min(1, signal.severity + bonus);
     let exclusionReason: string | null = null;
     if (!policy.proactive) exclusionReason = 'baseline';
+    else if (context.hasUnansweredIntervention) exclusionReason = 'unanswered-intervention';
     else if (context.resolvedSignalIds.includes(signal.id)) exclusionReason = 'resolved';
     else if (context.inFlightSignalIds.includes(signal.id)) exclusionReason = 'in-flight';
     else if (context.reservedSignalIds.includes(signal.id)) exclusionReason = 'reserved';
