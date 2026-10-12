@@ -13,6 +13,7 @@ import { ValidationToast } from './ValidationToast';
 import { configureSupervisorAccess } from '../../experiment/supervisor';
 import { SupervisorControls } from './SupervisorControls';
 import { SupervisorDrawer } from './SupervisorDrawer';
+import { IssueScoreInspector } from './IssueScoreInspector';
 import { assistanceWasDisplayed, setFinalSurveyDraft, setPostTaskSurveyDraft, submitFinalSurvey, submitPostTaskSurvey } from '../../experiment/surveys';
 import { PostTaskSurveyForm } from './PostTaskSurveyForm';
 import { FinalSurveyForm } from './FinalSurveyForm';
@@ -296,6 +297,7 @@ export function ExperimentController() {
       {session.phase === 'complete' && <><h2>Session complete</h2><p>Thank you. Tell the supervisor you have finished so they can export the session records.</p></>}
       <GenerationStatus events={session.events} />
       <SupervisorDrawer key={session.phase}>
+      <IssueScoreInspector session={session} />
       {session.phase === 'task' && definition && <SupervisorControls session={session} onTerminate={(authorization, reason) => commit(terminateTask(sessionRef.current!, authorization, reason))} />}
       <details className="supervisor-controls">
         <summary>Supervisor storage tools</summary>

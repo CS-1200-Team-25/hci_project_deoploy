@@ -62,6 +62,10 @@ button:focus-visible, input:focus-visible { outline: 3px solid #6e9edc; outline-
 .supervisor-drawer-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .supervisor-drawer p { margin-top: 16px; }
 .supervisor-drawer input, .supervisor-drawer textarea { min-width: 0; width: 100%; }
+.issue-score-list { list-style: none; padding: 0; }
+.issue-score-list li { margin-top: 16px; padding: 12px; border: 1px solid #dfe4ec; border-radius: 8px; overflow-wrap: anywhere; }
+.issue-score-list dl { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; font-size: .85rem; }
+.issue-score-list dd { margin: 0; font-variant-numeric: tabular-nums; }
 textarea { font: inherit; min-height: 80px; border: 1px solid #b9c5d5; border-radius: 6px; padding: 10px; }
 select { font: inherit; padding: 10px; border: 1px solid #b9c5d5; border-radius: 6px; max-width: 100%; }
 .trip-options { display: grid; gap: 16px; margin-bottom: 24px; }
