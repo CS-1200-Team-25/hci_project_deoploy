@@ -83,7 +83,10 @@ reaches completion; ended plans and submitted surveys remain immutable.
 
 Survey and consent wording are internal pilot drafts, not recruitment-approved
 instruments. Assistance generation remains reserved for a later ticket, and the
-assistant panel stays neutral. Earlier
+assistant panel stays neutral. Birthday edits now evaluate deterministic,
+versioned signals and record candidate decisions and selection reservations.
+Selection is distinct from generation and exposure; actual display cooldowns
+are supported by the public engine without fabricating display records. Earlier
 scaffold sessions without implemented task data are preserved if they cannot
 be safely recovered; no silent migration changes their assignment or timer.
 

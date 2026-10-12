@@ -84,7 +84,7 @@ timing, event records and reserved survey fields. The public `createSession`,
 `consentToSession`, `revealTask`, `updateTaskState`, `submitTask`, `terminateTask`,
 `loadSession` and `saveSession` interfaces form the session boundary. Task
 definitions provide versioned initial state, runtime state guards, validators
-and future assistant evaluators. Incompatible or damaged data must be preserved instead
+and deterministic assistant evaluators. Incompatible or damaged data must be preserved instead
 of silently reassigned. Save failures retain in-memory data and a failure record.
 External storage edits and deletions trigger recovery instead of being overwritten
 by the current tab. Supervisor storage tools allow an explicit reload for QA;
@@ -94,5 +94,31 @@ Scenario, sequence and condition-policy identifiers are versioned pilot drafts.
 Baseline's disabled threshold is serialized explicitly as `null` alongside
 `proactive: false`. Study knobs and content must be frozen after piloting before
 recruitment. See `ARCHITECTURE.md` and GitHub issues #3 and #4 for the full
-contract and issues #4–#8 for the implemented slices.
+contract and issues #4–#9 for the implemented slices.
 
+Birthday signal version1 is independent of condition. Missing food/drink have
+severity .85 and missing activity .8. Present food/drink with fewer than12
+servings score .4 + .4 × missing fraction. Budget pressure above$240 through$300
+scores .6 × (cost−240)/60; excess scores .8 + .2 × (cost−300)/300, capped at1.
+Activities outside14:00–17:00 and each overlapping pair score .9, with stable
+item/pair IDs. A valid activity schedule's largest gap of at least90 minutes
+scores .35 × gap/180 (optional efficiency). All scores clamp to[0,1]. Stable
+category IDs remain unchanged across revisions; pair IDs sort item IDs.
+
+Policy version2 disables baseline explicitly; low/high thresholds are .75/.4.
+Meaningful committed birthday edits evaluate; reveal, unchanged edits and reload
+do not. Recency uses the last actual display, or trial start:0 below30 seconds,
+.05 at30, .1 at60 and .2 at120, then remains bounded. Final score caps at1.
+Actual displays impose30-second global and60-second per-signal cooldowns.
+Resolved, in-flight, reserved and cooling candidates are excluded before
+ranking by score then stable ID; at most one candidate is selected per edit.
+Every candidate and an explicit summary (including zero candidates) are logged.
+
+Persisted selection snapshots include timestamp and task revision. A selection
+reserves its signal until a meaningful edit resolves it; recovery retains that
+reservation without replay. Reservations are distinct from real provider
+requests and actual display history. Future generation owns reservation release
+on failure/completion/revalidation and records exposure only when advice is
+shown. This slice creates no requests, display timestamps or exposure events;
+the panel remains neutral. Versioned configuration, selection integrity and
+display-history shape are checked on recovery.

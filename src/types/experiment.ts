@@ -1,4 +1,13 @@
 import type { ValidationResult } from './task';
+import type { AgentSignal } from './agent';
+
+export interface SelectionHistory {
+  id: string;
+  signal: AgentSignal;
+  selectedAt: number;
+  stateRevision: number;
+  resolvedAt?: number;
+}
 
 export type ExperimentPhase =
   | 'welcome'
@@ -28,6 +37,7 @@ export interface Trial {
   finalValidation?: ValidationResult;
   elapsedMs?: number;
   successfulCompletionMs?: number;
+  agentHistory?: { selections: SelectionHistory[]; displays: { signalId: string; timestamp: number }[]; inFlightSignalIds: string[] };
 }
 
 export interface PilotConfiguration {
@@ -36,6 +46,8 @@ export interface PilotConfiguration {
   scenarioVersion: string;
   policyVersion: string;
   surveyVersion: string;
+  signalVersion: string;
+  displayCooldowns: { globalMs: number; signalMs: number };
   conditions: Record<ConditionId, { proactive: boolean; threshold: number | null }>;
 }
 

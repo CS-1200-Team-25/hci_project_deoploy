@@ -24,6 +24,32 @@ function isValidation(value: unknown): value is Record<string, unknown> & { isCo
     && value.isComplete === (value.errors.length === 0);
 }
 
+function validAgentHistory(trial: Record<string, unknown>): boolean {
+  if (trial.agentHistory === undefined) return true;
+  const history = trial.agentHistory;
+  if (trial.task !== 'birthday' || trial.status === 'pending' || !isRecord(history)
+    || !Array.isArray(history.selections) || !Array.isArray(history.displays)
+    || !Array.isArray(history.inFlightSignalIds) || !history.inFlightSignalIds.every((id) => typeof id === 'string')) return false;
+  const ids = new Set<string>();
+  const reserved = new Set<string>();
+  return history.selections.every((selection) => {
+    if (!isRecord(selection) || typeof selection.id !== 'string' || ids.has(selection.id)
+      || !isRecord(selection.signal) || typeof selection.signal.id !== 'string' || typeof selection.signal.message !== 'string'
+      || !['budget', 'missing-category', 'coverage', 'schedule-conflict', 'deadline', 'efficiency'].includes(String(selection.signal.type))
+      || typeof selection.signal.severity !== 'number' || !Number.isFinite(selection.signal.severity)
+      || selection.signal.severity < 0 || selection.signal.severity > 1
+      || !Number.isFinite(selection.selectedAt) || (selection.selectedAt as number) < (trial.startedAt as number)
+      || !Number.isSafeInteger(selection.stateRevision) || (selection.stateRevision as number) < 1
+      || (selection.stateRevision as number) > (trial.stateRevision as number)
+      || (selection.resolvedAt !== undefined && (!Number.isFinite(selection.resolvedAt) || (selection.resolvedAt as number) < (selection.selectedAt as number)))
+      || (selection.resolvedAt === undefined && reserved.has(selection.signal.id))) return false;
+    ids.add(selection.id);
+    if (selection.resolvedAt === undefined) reserved.add(selection.signal.id);
+    return true;
+  }) && history.displays.every((display) => isRecord(display) && typeof display.signalId === 'string'
+    && Number.isFinite(display.timestamp) && (display.timestamp as number) >= (trial.startedAt as number));
+}
+
 function validRecordedOutcome(trial: Record<string, unknown>, finalPlanIsValid: (state: unknown) => boolean) {
   if (trial.submissionAttempts !== undefined && (!Array.isArray(trial.submissionAttempts)
     || !trial.submissionAttempts.every((attempt) => isRecord(attempt) && Number.isFinite(attempt.timestamp)
@@ -55,7 +81,7 @@ export function loadSession(storage: SessionStorage = localStorage): ExperimentS
     || !Array.isArray(value.trials) || value.trials.length !== 3 || !Array.isArray(value.events)
     || !isRecord(value.postTaskSurveys) || !isRecord(value.postTaskSurveyDrafts) || !isRecord(value.finalSurveyDraft)
     || !isRecord(value.configuration) || !isRecord(value.configuration.conditions)
-    || !(['version', 'sequenceVersion', 'scenarioVersion', 'policyVersion', 'surveyVersion'] as const).every((key) =>
+    || !(['version', 'sequenceVersion', 'scenarioVersion', 'policyVersion', 'surveyVersion', 'signalVersion'] as const).every((key) =>
       (value.configuration as Record<string, unknown>)[key] === PILOT_CONFIGURATION[key])) {
     throw new Error('Stored session is incompatible or damaged. The supervisor must preserve it before starting another session.');
   }
@@ -79,6 +105,7 @@ export function loadSession(storage: SessionStorage = localStorage): ExperimentS
     const definition = getTask(sequence.trials[index].task);
     if (trial.status !== 'pending' && definition && (trial.taskVersion !== definition.version || !definition.isState(trial.taskState))) return false;
     if (!validRecordedOutcome(trial, (state) => definition ? definition.isState(state) : state !== undefined)) return false;
+    if (!validAgentHistory(trial)) return false;
     return true;
   });
   const eventIds = new Set<string>();
@@ -93,9 +120,12 @@ export function loadSession(storage: SessionStorage = localStorage): ExperimentS
   const conditions = value.configuration.conditions;
   const configurationValid = ['baseline', 'low', 'high'].every((condition) => {
     const policy = conditions[condition];
-    return isRecord(policy) && typeof policy.proactive === 'boolean'
-      && (policy.threshold === null || (typeof policy.threshold === 'number' && Number.isFinite(policy.threshold)));
+    const expected = PILOT_CONFIGURATION.conditions[condition as keyof typeof PILOT_CONFIGURATION.conditions];
+    return isRecord(policy) && policy.proactive === expected.proactive && policy.threshold === expected.threshold;
   });
+  const cooldowns = value.configuration.displayCooldowns;
+  const cooldownsValid = isRecord(cooldowns) && cooldowns.globalMs === PILOT_CONFIGURATION.displayCooldowns.globalMs
+    && cooldowns.signalMs === PILOT_CONFIGURATION.displayCooldowns.signalMs;
   const activeTrial = value.trials[value.currentTrialIndex as number];
   const currentIndex = value.currentTrialIndex as number;
   const isEnded = (trial: Record<string, unknown>) => trial.status === 'completed' || trial.status === 'terminated';
@@ -106,7 +136,7 @@ export function loadSession(storage: SessionStorage = localStorage): ExperimentS
         : index > currentIndex ? trial.status === 'pending'
           : value.phase === 'task' ? trial.status === 'active' : isEnded(trial))
       : currentIndex === 2 && value.trials.every(isEnded);
-  if (!assignmentsValid || !eventsValid || !configurationValid
+  if (!assignmentsValid || !eventsValid || !configurationValid || !cooldownsValid
     || !phaseValid
     || !validSurveyState(value as unknown as ExperimentSession)
     || (value.phase !== 'welcome' && !Number.isFinite(value.consentedAt))

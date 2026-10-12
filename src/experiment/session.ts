@@ -7,6 +7,7 @@ import type { TaskResolver } from '../tasks/registry';
 import type { TaskAction } from '../types/task';
 import { isSupervisorAuthorized } from './supervisor';
 import type { SupervisorAuthorization } from './supervisor';
+import { evaluateCommittedEdit } from './interventions';
 
 /** Sequence indices are one-based, allocated by the supervisor across sessions. */
 export function createSession(participantId: string, sequenceIndex: number, now = Date.now()): ExperimentSession {
@@ -73,12 +74,14 @@ export function updateTaskState(session: ExperimentSession, taskState: unknown, 
   const definition = resolve(trial.task);
   if (session.phase !== 'task' || trial.status !== 'active' || !definition) return session;
   if (!definition.isState(taskState)) throw new Error('Invalid task state.');
-  return recordEvent({
+  if (JSON.stringify(taskState) === JSON.stringify(trial.taskState)) return session;
+  const next = recordEvent({
     ...session,
     trials: session.trials.map((candidate, index) => index === session.currentTrialIndex
       ? { ...candidate, taskState: structuredClone(taskState), stateRevision: candidate.stateRevision + 1 }
       : candidate),
   }, action.type, { ...action.payload, stateRevision: trial.stateRevision + 1 }, now);
+  return trial.task === 'birthday' ? evaluateCommittedEdit(next, definition.evaluateSignals(taskState), now) : next;
 }
 
 export function submitTask(session: ExperimentSession, now = Date.now(), resolve: TaskResolver = getTask): ExperimentSession {

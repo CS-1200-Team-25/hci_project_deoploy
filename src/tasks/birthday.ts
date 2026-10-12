@@ -1,5 +1,6 @@
 import type { ExperimentTask, ValidationResult } from '../types/task';
 import { PILOT_SCENARIOS } from '../experiment/scenarios';
+import type { AgentSignal } from '../types/agent';
 
 export interface BirthdayOption {
   id: string;
@@ -94,6 +95,45 @@ function validateBirthday(state: BirthdayState): ValidationResult {
   return { isComplete: errors.length === 0, errors, warnings: decorations ? [] : ['Decorations are optional; none are included.'] };
 }
 
+export function birthdaySignals(state: BirthdayState): AgentSignal[] {
+  const signals: AgentSignal[] = [];
+  const add = (id: string, type: AgentSignal['type'], severity: number, message: string) => {
+    signals.push({ id: `birthday:${id}`, type, severity: Math.min(1, Math.max(0, Number(severity.toFixed(6)))), message });
+  };
+  const summary = birthdaySummary(state);
+  for (const category of ['food', 'drink', 'activity'] as const) {
+    if (!state.items.some((item) => BIRTHDAY_CATALOG.find((option) => option.id === item.optionId)?.category === category)) {
+      add(`missing:${category}`, 'missing-category', category === 'activity' ? 0.8 : 0.85, `Include ${category} in the birthday plan.`);
+    } else if (category !== 'activity') {
+      const servings = category === 'food' ? summary.foodServings : summary.drinkServings;
+      if (servings < 12) add(`coverage:${category}`, 'coverage', 0.4 + 0.4 * (12 - servings) / 12, `${category} does not yet cover all 12 guests.`);
+    }
+  }
+  if (summary.totalCost > 240) add('budget', 'budget', summary.totalCost > 300
+    ? 0.8 + 0.2 * (summary.totalCost - 300) / 300 : 0.6 * (summary.totalCost - 240) / 60, 'Check the plan against the $300 budget.');
+  const activities = state.items.flatMap((item) => {
+    const option = BIRTHDAY_CATALOG.find((candidate) => candidate.id === item.optionId);
+    return option?.category === 'activity' ? [{ id: item.id, start: item.startMinute!, end: item.startMinute! + option.durationMinutes! }] : [];
+  });
+  for (const activity of activities) {
+    if (activity.start < 840 || activity.end > 1020) add(`window:${activity.id}`, 'schedule-conflict', 0.9, 'Keep the activity inside 14:00–17:00.');
+  }
+  for (let first = 0; first < activities.length; first++) {
+    for (let second = first + 1; second < activities.length; second++) {
+      const a = activities[first]; const b = activities[second];
+      if (a.start < b.end && b.start < a.end) add(`overlap:${[a.id, b.id].sort().join(':')}`, 'schedule-conflict', 0.9, 'Two planned activities overlap.');
+    }
+  }
+  const inside = activities.filter((activity) => activity.start >= 840 && activity.end <= 1020).sort((a, b) => a.start - b.start);
+  if (inside.length) {
+    let cursor = 840; let gap = 0;
+    for (const activity of inside) { gap = Math.max(gap, activity.start - cursor); cursor = Math.max(cursor, activity.end); }
+    gap = Math.max(gap, 1020 - cursor);
+    if (gap >= 90) add('schedule-gap', 'efficiency', 0.35 * gap / 180, 'There is a long unscheduled stretch; filling it is optional.');
+  }
+  return signals;
+}
+
 export const birthdayTask: ExperimentTask<BirthdayState> = {
   id: 'birthday',
   title: PILOT_SCENARIOS.birthday.title,
@@ -103,5 +143,5 @@ export const birthdayTask: ExperimentTask<BirthdayState> = {
   isState: isBirthdayState,
   validate: validateBirthday,
   getAgentContext: (state) => ({ taskId: 'birthday', summary: birthdaySummary(state) }),
-  evaluateSignals: () => [],
+  evaluateSignals: birthdaySignals,
 };
