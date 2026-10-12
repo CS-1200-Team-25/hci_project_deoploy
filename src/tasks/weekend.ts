@@ -1,3 +1,4 @@
+import type { AgentSignal } from '../types/agent';
 import type { ExperimentTask, ValidationResult } from '../types/task';
 import { PILOT_SCENARIOS } from '../experiment/scenarios';
 
@@ -121,9 +122,60 @@ function validateWeekend(state: WeekendState): ValidationResult {
   return { isComplete: errors.length === 0, errors, warnings: inefficient ? ['Optional: group visits at the same location to reduce backtracking.'] : [] };
 }
 
+/** Describe the fixed itinerary, never the assigned condition or passing decision. */
+export function evaluateWeekendSignals(state: WeekendState): AgentSignal[] {
+  const signals: AgentSignal[] = [];
+  const add = (id: string, type: AgentSignal['type'], severity: number, message: string, metadata: Record<string, unknown>) =>
+    signals.push({ id: `weekend:${id}`, type, severity: Math.min(1, Math.max(0, severity)), message, metadata });
+  const summary = weekendSummary(state);
+  if (!state.lodgingId) add('lodging', 'missing-category', .85, 'Select Saturday-night lodging.', { category: 'lodging' });
+  if (!state.transportId) add('transport', 'missing-category', .85, 'Select transport for the trip.', { category: 'transport' });
+  for (const [day, count] of [[0, summary.saturdayActivities], [1, summary.sundayActivities]]) {
+    if (count < 2) add(`coverage:${day}`, 'coverage', .4 + .4 * (2 - count) / 2, 'Schedule two activities on each day.', { day, count, required: 2 });
+  }
+  if (summary.totalCost > 400) add('budget', 'budget', summary.totalCost > 500 ? .8 + .2 * (summary.totalCost - 500) / 500 : .6 * (summary.totalCost - 400) / 100,
+    'Review total itinerary cost against the $500 budget.', { totalCost: summary.totalCost, budget: 500 });
+  const visits = state.activities.map(item => {
+    const option = WEEKEND_ACTIVITIES.find(candidate => candidate.id === item.optionId)!;
+    const day = Math.floor(item.startMinute / 1440);
+    const localStart = item.startMinute - day * 1440;
+    if (!Number.isSafeInteger(item.startMinute) || item.startMinute < WEEKEND_BOUNDARIES.start || item.startMinute + option.durationMinutes > WEEKEND_BOUNDARIES.end
+      || !option.openingWindows.some(window => window.day === day && localStart >= window.start && localStart + option.durationMinutes <= window.end)) {
+      add(`opening:${item.id}`, 'schedule-conflict', .9, 'Keep this visit within the trip and its listed opening hours.', { itemId: item.id, option, startMinute: item.startMinute });
+    }
+    return { id: item.id, location: option.location, start: item.startMinute, end: item.startMinute + option.durationMinutes };
+  });
+  const lodging = WEEKEND_LODGING.find(option => option.id === state.lodgingId);
+  const route = [
+    { id: 'arrival', location: 'station' as WeekendLocation, start: WEEKEND_BOUNDARIES.start, end: WEEKEND_BOUNDARIES.start },
+    ...visits,
+    ...(lodging ? [{ id: 'lodging', location: lodging.location, start: WEEKEND_BOUNDARIES.checkIn, end: WEEKEND_BOUNDARIES.checkOut }] : []),
+    { id: 'departure', location: 'station' as WeekendLocation, start: WEEKEND_BOUNDARIES.end, end: WEEKEND_BOUNDARIES.end },
+  ].sort((a, b) => a.start - b.start || a.id.localeCompare(b.id));
+  // Check all overlaps, including a long visit containing several short visits.
+  for (let i = 0; i < route.length; i++) for (let j = i + 1; j < route.length; j++) {
+    const a = route[i], b = route[j];
+    if (b.start < a.end && a.start < b.end) add(`overlap:${[a.id, b.id].sort().join(':')}`, 'schedule-conflict', .9,
+      'Separate overlapping itinerary bookings.', { itemIds: [a.id, b.id].sort(), first: a, second: b });
+  }
+  const travel = state.transportId ? WEEKEND_TRAVEL[state.transportId] : undefined;
+  if (travel) for (let i = 1; i < route.length; i++) {
+    const a = route[i - 1], b = route[i], required = travel[a.location][b.location], available = b.start - a.end;
+    if (available >= 0 && available < required) add(`travel:${a.id}:${b.id}`, 'schedule-conflict', .9, 'Allow enough time between these locations.',
+      { from: a, to: b, requiredMinutes: required, availableMinutes: available });
+  }
+  for (const day of [0, 1]) {
+    const daily = visits.filter(visit => Math.floor(visit.start / 1440) === day).sort((a, b) => a.start - b.start || a.id.localeCompare(b.id));
+    if (daily.some((visit, i) => i > 1 && visit.location !== daily[i - 1].location && daily.slice(0, i - 1).some(previous => previous.location === visit.location))) {
+      add(`route:${day}`, 'efficiency', .45, 'Optionally group visits at the same location to reduce backtracking.', { day, route: daily });
+    }
+  }
+  return signals;
+}
+
 export const weekendTask: ExperimentTask<WeekendState> = {
   id: 'weekend', title: PILOT_SCENARIOS.weekend.title, instructions: PILOT_SCENARIOS.weekend.instructions,
   version: WEEKEND_CATALOG_VERSION, initialState: { lodgingId: null, transportId: null, activities: [] },
   isState: isWeekendState, validate: validateWeekend,
-  getAgentContext: (state) => ({ taskId: 'weekend', summary: weekendSummary(state) }), evaluateSignals: () => [],
+  getAgentContext: (state) => ({ taskId: 'weekend', summary: { ...weekendSummary(state), plan: structuredClone(state), constraints: { budget: 500, activitiesPerDay: 2, ...WEEKEND_BOUNDARIES }, activities: WEEKEND_ACTIVITIES, lodging: WEEKEND_LODGING, transport: WEEKEND_TRANSPORT, travel: WEEKEND_TRAVEL } }), evaluateSignals: evaluateWeekendSignals,
 };

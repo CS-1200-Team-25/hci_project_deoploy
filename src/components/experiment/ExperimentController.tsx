@@ -58,9 +58,6 @@ export function ExperimentController() {
 
   function commit(next: ExperimentSession) {
     if (reloadIfStorageChanged()) return;
-    if (storageReadFailed.current) {
-      next = recordEvent(next, 'persistence_failed', { operation: 'read' });
-      storageReadFailed.current = false;
     const pending = pendingRequest.current;
     const active = next.trials[next.currentTrialIndex];
     if (pending && (next.phase !== 'task' || active.id !== pending.trialId || active.stateRevision !== pending.revision)) {
@@ -68,6 +65,10 @@ export function ExperimentController() {
       pending.controller.abort();
       pendingRequest.current = null;
       next = finishGeneration(next, pending.id, 'canceled', undefined, 'task-changed');
+    }
+    if (storageReadFailed.current) {
+      next = recordEvent(next, 'persistence_failed', { operation: 'read' });
+      storageReadFailed.current = false;
     }
     let saved = next;
     try {
@@ -269,7 +270,7 @@ export function ExperimentController() {
       </>}
       {session.phase === 'final-survey' && <FinalSurveyForm draft={session.finalSurveyDraft} trials={session.trials}
         onChange={(draft) => commit(setFinalSurveyDraft(sessionRef.current!, draft))} onSubmit={() => commit(submitFinalSurvey(sessionRef.current!))} />}
-      {session.phase === 'complete' && <><h2>Session complete</h2><p>Thank you. Your session records are saved in this browser. Tell the supervisor you have finished.</p></>}
+      {session.phase === 'complete' && <><h2>Session complete</h2><p>Thank you. Tell the supervisor you have finished so they can export the session records.</p></>}
       <GenerationStatus events={session.events} />
       <details>
         <summary>Supervisor storage tools</summary>

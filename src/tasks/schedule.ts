@@ -1,3 +1,4 @@
+import type { AgentSignal } from '../types/agent';
 import type { ExperimentTask, ValidationResult } from '../types/task';
 import { PILOT_SCENARIOS } from '../experiment/scenarios';
 
@@ -74,8 +75,52 @@ function validateSchedule(state: ScheduleState): ValidationResult {
   return { isComplete: errors.length === 0, errors, warnings: hasOptional ? [] : ['Meals, rest, exercise and buffers are optional; add them if helpful.'] };
 }
 
+export function evaluateScheduleSignals(state: ScheduleState): AgentSignal[] {
+  const signals: AgentSignal[] = [];
+  const add = (id: string, type: AgentSignal['type'], severity: number, message: string, metadata: Record<string, unknown>) =>
+    signals.push({ id: `schedule:${id}`, type, severity: Math.min(1, Math.max(0, severity)), message, metadata });
+  // Only feasible, non-overlapping preparation contributes to assistance coverage.
+  const validPreparation = state.blocks.filter(block => block.kind === 'preparation'
+    && Number.isInteger(block.day) && block.day >= 0 && block.day <= 4
+    && Number.isSafeInteger(block.startMinute) && Number.isSafeInteger(block.durationMinutes)
+    && block.durationMinutes > 0 && block.startMinute >= 480 && block.startMinute + block.durationMinutes <= 1200
+    && !state.blocks.some(other => other.id !== block.id && other.day === block.day
+      && other.startMinute < block.startMinute + block.durationMinutes && block.startMinute < other.startMinute + other.durationMinutes));
+  const prepared = scheduleSummary({ blocks: validPreparation }).preparationMinutesBeforeDeadline;
+  if (prepared < 240) add('preparation', 'coverage', .4 + .45 * (240 - prepared) / 240,
+    'Reserve four non-overlapping preparation hours before Friday 17:00.', { preparedMinutes: prepared, requiredMinutes: 240 });
+  for (const block of state.blocks) {
+    if (!Number.isInteger(block.day) || block.day < 0 || block.day > 4 || !Number.isSafeInteger(block.startMinute)
+      || !Number.isSafeInteger(block.durationMinutes) || block.durationMinutes <= 0 || block.startMinute < 480 || block.startMinute + block.durationMinutes > 1200) {
+      add(`bounds:${block.id}`, 'schedule-conflict', .9, 'Keep blocks within weekday 08:00 to 20:00 with positive whole-minute duration.', { block });
+    }
+    if (block.kind === 'preparation' && block.day === 4 && block.startMinute + block.durationMinutes > 1020) {
+      add(`deadline:${block.id}`, 'deadline', .9, 'Preparation after Friday 17:00 does not count toward the assignment.', { block, deadline: { day: 4, minute: 1020 } });
+    }
+  }
+  for (let day = 0; day < 5; day++) {
+    const blocks = state.blocks.filter(block => block.day === day).sort((a, b) => a.startMinute - b.startMinute || a.id.localeCompare(b.id));
+    for (let i = 0; i < blocks.length; i++) for (let j = i + 1; j < blocks.length; j++) {
+      const a = blocks[i], b = blocks[j];
+      if (b.startMinute < a.startMinute + a.durationMinutes && a.startMinute < b.startMinute + b.durationMinutes) {
+        add(`overlap:${[a.id, b.id].sort().join(':')}`, 'schedule-conflict', .9, 'Separate overlapping blocks.', { day, blocks: [a, b] });
+      }
+    }
+    for (let i = 1; i < blocks.length; i++) {
+      const a = blocks[i - 1], b = blocks[i], gap = b.startMinute - a.startMinute - a.durationMinutes;
+      if (gap >= 0 && gap < 15) add(`back-to-back:${a.id}:${b.id}`, 'efficiency', .45 * (15 - gap) / 15,
+        'Optionally leave a short transition buffer between these blocks.', { day, blocks: [a, b], gapMinutes: gap, suggestedMinutes: 15 });
+    }
+  }
+  for (const kind of ['meal', 'rest', 'exercise'] as const) {
+    if (!state.blocks.some(block => block.kind === kind)) add(`optional:${kind}`, 'missing-category', .45,
+      `Optionally reserve time for ${kind}; this is not required to pass.`, { category: kind, optional: true });
+  }
+  return signals;
+}
+
 export const scheduleTask: ExperimentTask<ScheduleState> = {
   id: 'schedule', title: PILOT_SCENARIOS.schedule.title, instructions: PILOT_SCENARIOS.schedule.instructions,
   version: SCHEDULE_VERSION, initialState: { blocks: structuredClone(FIXED_COMMITMENTS) }, isState: isScheduleState,
-  validate: validateSchedule, getAgentContext: (state) => ({ taskId: 'schedule', summary: scheduleSummary(state) }), evaluateSignals: () => [],
+  validate: validateSchedule, getAgentContext: (state) => ({ taskId: 'schedule', summary: { ...scheduleSummary(state), plan: structuredClone(state), fixedCommitments: FIXED_COMMITMENTS, constraints: { weekdays: WEEKDAYS, startMinute: 480, endMinute: 1200, preparationMinutes: 240, deadline: { day: 4, minute: 1020 }, optionalKinds: ['meal', 'rest', 'exercise', 'buffer'] } } }), evaluateSignals: evaluateScheduleSignals,
 };

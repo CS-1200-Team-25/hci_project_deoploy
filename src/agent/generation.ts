@@ -2,6 +2,8 @@ import type { AgentContext } from '../types/task';
 import type { AgentSignal, Intervention } from '../types/agent';
 
 export interface GenerationConfiguration {
+  /** Absent on historical OpenAI records; new endpoints identify their adapter. */
+  provider?: string;
   model: string;
   promptVersion: string;
   schemaVersion: string;
@@ -38,6 +40,7 @@ export interface ShownIntervention extends Intervention {
 export function validGenerationConfiguration(value: unknown): value is GenerationConfiguration {
   const config = value as GenerationConfiguration | null;
   return !!config && typeof config.model === 'string' && !!config.model
+    && (config.provider === undefined || (typeof config.provider === 'string' && /^[a-z][a-z0-9-]{0,63}$/.test(config.provider)))
     && typeof config.promptVersion === 'string' && !!config.promptVersion
     && typeof config.schemaVersion === 'string' && !!config.schemaVersion
     && Number.isSafeInteger(config.settings?.maxOutputTokens) && config.settings.maxOutputTokens > 0
@@ -51,5 +54,6 @@ export function validGeneratedAdvice(value: unknown, record: GenerationRecord): 
     && typeof advice.message === 'string' && advice.message.trim().length > 0 && advice.message.length <= 1200
     && advice.target === (record.request.signal.target ?? null)
     && advice.model === record.model && advice.promptVersion === record.promptVersion && advice.schemaVersion === record.schemaVersion
+    && advice.provider === record.provider
     && JSON.stringify(advice.settings) === JSON.stringify(record.settings);
 }

@@ -76,14 +76,32 @@ export function updateTaskState(session: ExperimentSession, taskState: unknown, 
   if (session.phase !== 'task' || trial.status !== 'active' || !definition) return session;
   if (!definition.isState(taskState)) throw new Error('Invalid task state.');
   if (JSON.stringify(taskState) === JSON.stringify(trial.taskState)) return session;
-  const next = recordEvent({
+  let next = recordEvent({
     ...session,
     trials: session.trials.map((candidate, index) => index === session.currentTrialIndex
       ? { ...candidate, taskState: structuredClone(taskState), stateRevision: candidate.stateRevision + 1 }
       : candidate),
   }, action.type, { ...action.payload, stateRevision: trial.stateRevision + 1 }, now);
+  const previousValidation = definition.validate(trial.taskState);
+  const currentValidation = definition.validate(taskState);
+  const correctedRequirements = previousValidation.errors.filter(error => !currentValidation.errors.includes(error));
+  if (trial.submissionAttempts?.at(-1)?.validation.isComplete === false && correctedRequirements.length > 0) {
+    next = recordEvent(next, 'participant_correction', {
+      interventionId: null, attribution: 'unspecified', correctedRequirements,
+      previousStateRevision: trial.stateRevision, stateRevision: trial.stateRevision + 1,
+      passingAfterEdit: currentValidation.isComplete,
+    }, now);
+  }
+  const currentSignals = definition.evaluateSignals(taskState);
+  const activeIds = new Set(currentSignals.map(signal => signal.id));
+  for (const signal of definition.evaluateSignals(trial.taskState)) {
+    if (!activeIds.has(signal.id)) next = recordEvent(next, 'signal_resolved', {
+      signalId: signal.id, stateRevision: trial.stateRevision + 1, attribution: 'unspecified',
+      priorExposureIds: trial.agentHistory?.interventions?.filter(advice => advice.signalId === signal.id).map(advice => advice.id) ?? [],
+    }, now);
+  }
   const canceled = cancelPendingGenerations(next, 'task-edited', now);
-  return trial.task === 'birthday' ? evaluateCommittedEdit(canceled, definition.evaluateSignals(taskState), now) : canceled;
+  return evaluateCommittedEdit(canceled, currentSignals, now);
 }
 
 export function submitTask(session: ExperimentSession, now = Date.now(), resolve: TaskResolver = getTask): ExperimentSession {

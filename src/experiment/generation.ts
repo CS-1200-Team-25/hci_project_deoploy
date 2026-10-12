@@ -67,7 +67,7 @@ export function finishGeneration(session: ExperimentSession, requestId: string, 
     interventions: advice ? [...(history.interventions ?? []), advice] : (history.interventions ?? []),
   } } : candidate) };
   next = recordEvent(next, 'agent_request_finished', { requestId, status, reason: reason ?? null, latencyMs: finished.latencyMs }, now, trial);
-  return advice ? recordEvent(next, 'agent_intervention_shown', { ...advice, model: record.model, promptVersion: record.promptVersion, schemaVersion: record.schemaVersion, settings: record.settings, context: record.request.context }, now, trial) : next;
+  return advice ? recordEvent(next, 'agent_intervention_shown', { ...advice, ...(record.provider ? { provider: record.provider } : {}), model: record.model, promptVersion: record.promptVersion, schemaVersion: record.schemaVersion, settings: record.settings, context: record.request.context }, now, trial) : next;
 }
 
 export function respondToIntervention(session: ExperimentSession, interventionId: string, response: 'acknowledged' | 'dismissed', now = Date.now()): ExperimentSession {

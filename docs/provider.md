@@ -1,59 +1,84 @@
 # Local intervention provider
 
-Requires Node 22.12+ and an OpenAI project API key with access to the frozen
-`gpt-4.1-mini-2025-04-14` default snapshot. `OPENAI_MODEL` can select a different
-model before the pilot; freeze it for all conditions throughout the study.
-`GENERATION_TIMEOUT_MS` defaults to 15000 and accepts integers 100–120000.
-Copy `.env.example` to `.env`, set
-`OPENAI_API_KEY`, run `npm run provider` in one terminal and `npm run dev` in
-another. Open exactly `http://localhost:5173`; set `APP_ORIGIN` to the browser
-origin if using a different port or preview (`http://localhost:4173`). Vite
-proxies `/api` to the server on `127.0.0.1:8787`. Keep `.env` private; never
-use a `VITE_` environment variable for credentials. `vite build` produces only
-the browser bundle; the provider must run separately during a pilot.
+Requires Node 22.12+. Copy .env.example to .env, set GEMINI_API_KEY, then run
+npm run provider and npm run dev in separate terminals. The default is Gemini's
+native API with gemini-2.5-flash-lite; LLM_MODEL selects the model. Open
+http://localhost:5173. APP_ORIGIN must match the browser origin. Vite proxies
+/api to 127.0.0.1:8787 in dev and preview; production still needs the service.
+Keep .env private and never prefix credentials with VITE_.
 
-The loopback service accepts JSON POSTs only from `APP_ORIGIN`, caps bodies at
-32 KiB, permits two concurrent calls and twenty calls per minute process-wide,
-and aborts calls after the configured timeout or when the browser disconnects. These are
-local supervised-pilot protections, not a public deployment authentication
-system. Do not expose this server publicly. No database or request logging is
-used. Only the selected signal and current task summary reach OpenAI; session,
-trial and selection identifiers stay local. `store: false` disables storage of
-the response for retrieval; this is not a claim of zero provider data retention.
+## Provider and model configuration
 
-`GET /api/interventions/config` exposes the frozen model, prompt/schema versions,
-maximum output tokens and timeout. Both active conditions use the same prompt,
-model and settings. The POST contract accepts session/trial/task/selection IDs,
-state revision, request ID, signal and `{taskId, summary}` context. Summary must
-be a bounded JSON object containing finite numbers and safe JSON primitives;
-task IDs and signal types must belong to the domain enums. Unknown top-level fields
-(including condition) are rejected. The result carries `signalId`, intervention
-`type`, `message`, `target`, model/settings/version metadata and optional provider
-request ID. Strict structured output is checked again before returning it.
-Failures return a JSON error and non-200 status; there is no canned fallback.
+| LLM_PROVIDER | API | Credential | Default model |
+| --- | --- | --- | --- |
+| gemini (default) | Google generateContent | GEMINI_API_KEY or GOOGLE_API_KEY | gemini-2.5-flash-lite |
+| openai | OpenAI Responses | OPENAI_API_KEY | gpt-4.1-mini-2025-04-14 |
+| openai-compatible | Chat completions | LLM_API_KEY | Explicit LLM_MODEL required |
 
-Run `npm run test:provider` for endpoint checks with a controlled upstream.
-For a live smoke check, use a non-baseline birthday trial, wait at least thirty
-seconds after reveal, then make a meaningful edit leaving a qualifying issue.
-Confirm one suggestion appears, verify the network request goes to the local
-`/api/interventions` endpoint, and inspect recorded generation/display events.
-Remove the key or stop the provider and repeat with a fresh eligible selection:
-confirm explicit failure with no fabricated suggestion or display event.
-Live output quality, latency and account access require a real-key smoke run;
-automated controlled-upstream tests do not establish those properties.
+LLM_API_KEY overrides provider-specific keys. LLM_MODEL overrides legacy
+GEMINI_MODEL / OPENAI_MODEL. LLM_BASE_URL overrides the server's API root;
+include its version/path prefix, without the operation. Built-in providers have
+default roots; compatible endpoints require an explicit root. URLs must use
+HTTPS, or loopback HTTP, without embedded credentials, queries or fragments.
+Redirects are rejected. A local compatible service example:
 
-Client requests record the model/prompt/schema/settings returned by config before
-generation. Request and response events remain distinct from actual display.
-Every meaningful task edit invalidates the pending revision, including edits
-resolving its issue; completion, termination and reload also cancel/interrupt it.
-Only a validated current response updates display cooldowns (30 seconds globally,
-60 seconds per signal). Failed attempts release reservations and can be selected
-again on a later meaningful edit. Reload retains shown history and explicit
-acknowledgement/dismissal without replay or a second display event. No response
-is interpreted as ignoring, and subsequent edits are not labeled causal corrections.
-Configuration, provider, timeout and invalid-output failures show a retained
-supervisor status with a sanitized explanation and incident count. The warning
-survives reload and survey navigation so failed generation remains visible when
-assessing the pilot; cancellation after ordinary edits is not classified as failure.
+    LLM_PROVIDER=openai-compatible
+    LLM_MODEL=your-installed-model
+    LLM_BASE_URL=http://127.0.0.1:11434/v1
 
-Implementation follows the official OpenAI [Structured Outputs guide](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=responses).
+Loopback compatible services can run without a key; remote services require
+LLM_API_KEY. The model/service must support strict JSON-schema response_format,
+system/user messages and max_tokens. Compatibility varies: unsupported settings
+fail explicitly, without fallback advice or automatic provider switching.
+Arbitrary APIs are not interchangeable. Add another protocol in
+server/adapters.mjs with its default model/root, credential resolver, build and
+parse functions. The parser returns {text, id?, model?} or ProviderOutputError.
+Shared HTTP protections, validation, timeout and browser behavior then apply.
+
+GENERATION_TIMEOUT_MS defaults to 15000 (integer100-120000). Freeze provider,
+model, prompt/schema and settings before a pilot; active conditions share them.
+Browser configuration exposes provider/model, versions, output-token limit and
+timeout. Keys and custom endpoint URLs remain server-only. Requests and displays
+retain provider identity; normalized responses retain the upstream response ID
+and actual model version when supplied. Historical records without a provider
+field remain historical OpenAI-era data; they are not rewritten.
+
+## Contract and failures
+
+The loopback server accepts same-origin JSON POSTs, caps bodies at32KiB, allows
+two concurrent calls and twenty per minute, and aborts on timeout or disconnect.
+It has no study database or request logging. Only the selected signal and task
+summary go upstream; participant/session/trial/selection identities stay local.
+These are supervised local safeguards, not public authentication. Provider
+retention terms still apply; no zero-retention claim is made.
+
+GET /api/interventions/config reports public configuration. POST
+/api/interventions accepts session/trial/task/selection/request IDs, revision,
+signal and bounded JSON context. Unknown top-level fields (including condition)
+are rejected. Adapters normalize output; shared validation checks signal/target
+identity, type and bounded nonempty message. Refusal, truncation, malformed output
+and provider errors yield sanitized failures, never fabricated advice.
+
+The browser permits one pending request per trial; edits, completion, termination
+and reload cancel/interrupt it. Recovery never replays requests. Display rechecks
+provider/model/configuration, revision, unresolved signal and actual-display
+cooldowns (30seconds global, 60 per signal). Only actual displays change exposure
+history. Acknowledgement/dismissal are explicit responses; silence and later edits
+do not imply ignoring or causation. Supervisor failures remain visible while
+editing/submission work.
+
+## Verification
+
+Run npm run test:provider for controlled-upstream endpoint checks and npm test
+for browser/session checks. A live smoke run needs a real configured key and both
+services. In a non-baseline task, wait thirty seconds after reveal and edit while
+leaving a qualifying issue. Confirm actual advice, the local generation request,
+and provider/model/context/latency/display records in the export. Acknowledge or
+dismiss advice and edit while waiting. Stop the service and trigger another
+eligible selection: confirm supervisor failure status and no fabricated advice.
+Baseline sends no proactive requests. Account access, real output quality and
+latency require this manual run; mocked tests cannot prove them.
+
+References: Google's [structured-output guide](https://ai.google.dev/gemini-api/docs/generate-content/structured-output),
+[generateContent reference](https://ai.google.dev/api/generate-content), and
+[chat-completions compatibility guide](https://ai.google.dev/gemini-api/docs/openai).

@@ -38,3 +38,20 @@ test('recovery interrupts pending request with original trial context and reject
   saveSession(damaged, storage, 3000);
   expect(() => loadSession(storage)).toThrow('incompatible or damaged');
 });
+
+test('provider identity survives recovery and mismatched provider output cannot display', () => {
+  let session = selected();
+  const providerConfig = { ...config, provider: 'gemini' };
+  session = beginGeneration(session, session.trials[0].agentHistory!.selections[0].id, providerConfig, 2000);
+  const request = session.trials[0].agentHistory!.requests![0];
+  const advice = { ...providerConfig, provider: 'openai', signalId: request.request.signal.id, type: 'suggestion', message: 'Wrong provider advice', target: null };
+  const shown = finishGeneration(session, request.id, 'succeeded', { ...advice, provider: 'gemini' }, undefined, 3000);
+  expect(shown.events.find(event => event.eventType === 'agent_intervention_shown')?.payload).toMatchObject({ provider: 'gemini' });
+  session = finishGeneration(session, request.id, 'succeeded', advice, undefined, 3000);
+  expect(session.trials[0].agentHistory!.requests![0].status).toBe('invalid');
+  expect(session.trials[0].agentHistory!.displays).toEqual([]);
+  let value = '';
+  const storage = { getItem: () => value, setItem: (_key: string, next: string) => { value = next; } };
+  saveSession(session, storage, 3000);
+  expect(loadSession(storage)!.trials[0].agentHistory!.requests![0]).toMatchObject({ provider: 'gemini', status: 'invalid' });
+});

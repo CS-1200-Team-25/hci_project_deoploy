@@ -20,7 +20,7 @@ test('rejects cross-origin and unknown fields before provider invocation', async
 }));
 test('strict Responses request omits session identity; output identity is validated', async () => {
   let mismatch = false;
-  await fixture({ apiKey: 'test', fetchImpl: async (url, options) => {
+  await fixture({ provider: 'openai', apiKey: 'test', fetchImpl: async (url, options) => {
     assert.equal(url, 'https://api.openai.com/v1/responses');
     const body = JSON.parse(options.body);
     assert.equal(body.text.format.strict, true);
@@ -35,8 +35,77 @@ test('strict Responses request omits session identity; output identity is valida
     assert.equal((await post()).status, 502);
   });
 });
+
+test('Gemini is the default and native structured advice uses server-only credentials', async () => {
+  await fixture({ apiKey: 'gemini-secret', fetchImpl: async (url, options) => {
+    assert.equal(url, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent');
+    assert.equal(options.headers['x-goog-api-key'], 'gemini-secret');
+    const body = JSON.parse(options.body);
+    assert.equal(body.generationConfig.responseFormat.text.mimeType, 'APPLICATION_JSON');
+    assert.equal(body.generationConfig.responseFormat.text.schema.additionalProperties, false);
+    assert.equal(body.generationConfig.responseFormat.text.schema.properties.target.type, 'null');
+    assert.deepEqual(body.generationConfig.responseFormat.text.schema.properties.signalId.enum, ['food']);
+    assert.equal(JSON.parse(body.contents[0].parts[0].text).sessionId, undefined);
+    return Response.json({ responseId: 'gemini-response', modelVersion: 'gemini-2.5-flash-lite-001', candidates: [{ finishReason: 'STOP', content: { parts: [{ text: JSON.stringify({ signalId: 'food', type: 'suggestion', message: 'Choose enough food for twelve guests.', target: null }) }] } }] });
+  } }, async ({ url, post }) => {
+    const config = await (await fetch(`${url}/api/interventions/config`)).json();
+    assert.equal(config.provider, 'gemini');
+    assert.equal(JSON.stringify(config).includes('gemini-secret'), false);
+    const response = await post();
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).providerRequestId, 'gemini-response');
+  });
+});
+
+test('compatible endpoints accept custom model IDs and normalize chat-completion advice', async () => {
+  await fixture({ provider: 'openai-compatible', model: 'org/model:latest', baseUrl: 'http://127.0.0.1:11434/v1', env: {}, fetchImpl: async (url, options) => {
+    assert.equal(url, 'http://127.0.0.1:11434/v1/chat/completions');
+    assert.equal(options.headers.Authorization, undefined);
+    const body = JSON.parse(options.body);
+    assert.equal(body.model, 'org/model:latest');
+    assert.equal(body.response_format.json_schema.strict, true);
+    assert.equal(body.max_tokens, 300);
+    assert.equal(JSON.parse(body.messages[1].content).trialId, undefined);
+    return Response.json({ id: 'local-response', model: 'org/model:latest', choices: [{ finish_reason: 'stop', message: { content: JSON.stringify({ signalId: 'food', type: 'suggestion', message: 'Add food for the guests.', target: null }) } }] });
+  } }, async ({ post }) => {
+    const response = await post();
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).provider, 'openai-compatible');
+  });
+});
+
+for (const [provider, truncated, refused, invalid] of [
+  ['gemini', { candidates: [{ finishReason: 'MAX_TOKENS' }] }, { promptFeedback: { blockReason: 'SAFETY' } }, { candidates: [{ finishReason: 'STOP', content: { parts: [{ text: '{"signalId":"wrong","type":"suggestion","message":"Bad identity","target":null}' }] } }] }],
+  ['openai', { status: 'incomplete' }, { status: 'completed', output: [{ content: [{ type: 'refusal' }] }] }, { status: 'completed', output: [{ content: [{ type: 'output_text', text: '{"signalId":"wrong","type":"suggestion","message":"Bad identity","target":null}' }] }] }],
+  ['openai-compatible', { choices: [{ finish_reason: 'length' }] }, { choices: [{ finish_reason: 'content_filter' }] }, { choices: [{ finish_reason: 'stop', message: { content: '{"signalId":"wrong","type":"suggestion","message":"Bad identity","target":null}' } }] }],
+]) {
+  test(`${provider} refuses incomplete, blocked and mismatched advice without exposure`, async () => {
+    let output = truncated;
+    await fixture({ provider, model: 'test-model', baseUrl: 'https://provider.example/v1', apiKey: 'test', fetchImpl: async () => Response.json(output) }, async ({ post }) => {
+      let response = await post();
+      assert.equal(response.status, 502);
+      assert.equal((await response.json()).error, 'provider-incomplete');
+      output = refused;
+      response = await post();
+      assert.equal(response.status, 502);
+      assert.equal((await response.json()).error, 'provider-refusal');
+      output = invalid;
+      response = await post();
+      assert.equal(response.status, 502);
+      assert.equal((await response.json()).error, 'invalid-provider-response');
+    });
+  });
+}
 test('timeout aborts upstream and returns explicit failure', async () => fixture({ apiKey: 'test', timeoutMs: 100, fetchImpl: (_url, { signal }) => new Promise((_, reject) => signal.addEventListener('abort', () => reject(Error('aborted')), { once: true })) }, async ({ post }) => {
   assert.equal((await post()).status, 504);
+}));
+
+test('default timeout allows delayed Gemini responses within its configured budget', async () => fixture({ apiKey: 'test', fetchImpl: async (_url, { signal }) => {
+  await new Promise(resolve => setTimeout(resolve, 50));
+  assert.equal(signal.aborted, false);
+  return Response.json({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: JSON.stringify({ signalId: 'food', type: 'suggestion', message: 'Add food for twelve guests.', target: null }) }] } }] });
+} }, async ({ post }) => {
+  assert.equal((await post()).status, 200);
 }));
 test('concurrency guard rejects a third live call and releases slots on timeout', async () => {
   let started = 0;
@@ -58,7 +127,14 @@ test('concurrency guard rejects a third live call and releases slots on timeout'
 });
 test('configured model and timeout are validated and exposed accurately', async () => {
   for (const timeout of ['99', '120001', 'NaN', '1.5']) assert.throws(() => providerConfiguration({ GENERATION_TIMEOUT_MS: timeout }));
-  assert.throws(() => providerConfiguration({ OPENAI_MODEL: 'bad model' }));
+  assert.throws(() => providerConfiguration({ LLM_MODEL: 'bad model' }));
+  assert.throws(() => providerConfiguration({ LLM_PROVIDER: 'openai-compatible' }), /LLM_MODEL/);
+  assert.throws(() => providerConfiguration({ LLM_PROVIDER: 'openai-compatible', GEMINI_MODEL: 'gemini-2.5-flash' }), /LLM_MODEL/);
+  assert.throws(() => providerConfiguration({ LLM_PROVIDER: 'unknown' }), /LLM_PROVIDER/);
+  assert.throws(() => createProviderServer({ provider: 'openai-compatible', model: 'local-model', env: {} }), /LLM_BASE_URL/);
+  for (const baseUrl of ['http://remote.example/v1', 'https://user:password@example.com/v1', 'https://example.com/v1?key=secret']) {
+    assert.throws(() => createProviderServer({ baseUrl }), /LLM_BASE_URL/);
+  }
   await fixture({ model: 'custom-snapshot', timeoutMs: 1234 }, async ({ url }) => {
     const config = await (await fetch(`${url}/api/interventions/config`)).json();
     assert.equal(config.model, 'custom-snapshot');

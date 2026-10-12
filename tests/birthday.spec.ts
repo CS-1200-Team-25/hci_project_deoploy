@@ -218,7 +218,7 @@ test('a second passing plan can exactly use the budget and end at 17:00 with adj
     { id: 'craft', optionId: 'craft-workshop', quantity: 1, startMinute: 885 },
     { id: 'trivia', optionId: 'trivia', quantity: 1, startMinute: 990 },
   ] };
-  expect(birthdayTask.getAgentContext(state).summary).toEqual({ totalCost: 300, foodServings: 14, drinkServings: 30 });
+  expect(birthdayTask.getAgentContext(state).summary).toMatchObject({ totalCost: 300, foodServings: 14, drinkServings: 30, plan: state, constraints: { guests: 12, budget: 300 } });
   expect(birthdayTask.validate(state).isComplete).toBe(true);
   expect(birthdayTask.validate({ items: [...state.items, { id: 'extra', optionId: 'banners', quantity: 1 }] }).errors).toContain('Keep total cost at or below $300.');
   expect(birthdayTask.validate({ items: state.items.map((item) => item.id === 'craft' ? { ...item, startMinute: 884 } : item) }).errors).toContain('Party games and Craft workshop overlap.');

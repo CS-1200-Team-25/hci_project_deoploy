@@ -142,6 +142,6 @@ export const birthdayTask: ExperimentTask<BirthdayState> = {
   version: BIRTHDAY_CATALOG_VERSION,
   isState: isBirthdayState,
   validate: validateBirthday,
-  getAgentContext: (state) => ({ taskId: 'birthday', summary: birthdaySummary(state) }),
+  getAgentContext: (state) => ({ taskId: 'birthday', summary: { ...birthdaySummary(state), plan: structuredClone(state), catalog: BIRTHDAY_CATALOG, constraints: { guests: 12, budget: 300, startMinute: 840, endMinute: 1020, foodServings: 12, drinkServings: 12, requiredActivities: 1, decorationsOptional: true } } }),
   evaluateSignals: birthdaySignals,
 };
