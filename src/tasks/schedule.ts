@@ -16,6 +16,15 @@ export const FIXED_COMMITMENTS: ScheduleBlock[] = [
   { id: 'work-thu', kind: 'work', day: 3, startMinute: 780, durationMinutes: 240 },
 ];
 export function isFixedCommitment(block: ScheduleBlock) { return FIXED_COMMITMENTS.some((fixed) => fixed.id === block.id); }
+function describeScheduleBlock(block: ScheduleBlock) {
+  const time = (minute: number) => Number.isSafeInteger(minute) && minute >= 0 && minute <= 1440
+    ? `${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}` : 'invalid time';
+  const weekday = WEEKDAYS[block.day] ?? 'invalid weekday';
+  const startTime = time(block.startMinute), endTime = time(block.startMinute + block.durationMinutes);
+  return { ...block, weekday, startTime, endTime,
+    label: `${weekday} ${block.kind}`, description: `${weekday} ${block.kind}, ${startTime}–${endTime}`,
+    editable: !isFixedCommitment(block) };
+}
 function matchesFixedCommitment(block: ScheduleBlock, fixed: ScheduleBlock) {
   return block.id === fixed.id && block.kind === fixed.kind && block.day === fixed.day
     && block.startMinute === fixed.startMinute && block.durationMinutes === fixed.durationMinutes;
@@ -124,8 +133,8 @@ export const scheduleTask: ExperimentTask<ScheduleState> = {
   id: 'schedule', title: PILOT_SCENARIOS.schedule.title, instructions: PILOT_SCENARIOS.schedule.instructions,
   version: SCHEDULE_VERSION, initialState: { blocks: structuredClone(FIXED_COMMITMENTS) }, isState: isScheduleState,
   validate: validateSchedule, getAgentContext: (state) => ({ taskId: 'schedule', summary: {
-    ...scheduleSummary(state), plan: structuredClone(state),
-    fixedCommitments: FIXED_COMMITMENTS.map(block => ({ ...block, label: `${WEEKDAYS[block.day]} ${block.kind}` })),
+    ...scheduleSummary(state), plan: { blocks: state.blocks.map(describeScheduleBlock) },
+    fixedCommitments: FIXED_COMMITMENTS.map(describeScheduleBlock),
     editing: {
       editableBlockKinds: EDITABLE_SCHEDULE_KINDS,
       fixedCommitmentsEditable: false,
@@ -135,7 +144,8 @@ export const scheduleTask: ExperimentTask<ScheduleState> = {
         'Fixed class and work commitments cannot be moved, changed or removed.',
       ],
       timeEncoding: 'day is 0 Monday through 4 Friday; startMinute is whole minutes after midnight. Present suggested times with weekday and HH:MM.',
+      blockIdentification: 'Match selected-signal block IDs to plan blocks. Refer to their readable description (weekday, block type and current time range), especially when two blocks share a type or day. Use Block type, Day, Start time and Duration controls for editable blocks; keep fixed commitments unchanged.',
     },
-    constraints: { weekdays: WEEKDAYS, startMinute: 480, endMinute: 1200, preparationMinutes: 240, deadline: { day: 4, minute: 1020 }, optionalKinds: ['meal', 'rest', 'exercise', 'buffer'] },
+    constraints: { weekdays: WEEKDAYS, startMinute: 480, endMinute: 1200, dailyWindow: 'Monday–Friday 08:00–20:00', preparationMinutes: 240, deadline: { day: 4, minute: 1020, label: 'Friday 17:00' }, optionalKinds: ['meal', 'rest', 'exercise', 'buffer'] },
   } }), evaluateSignals: evaluateScheduleSignals,
 };

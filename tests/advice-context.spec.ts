@@ -40,11 +40,16 @@ test('advice context describes available catalog options and executable edits in
 });
 
 test('every provider receives the action-and-reason prompt and unmodified real task options', async () => {
+  const scheduleState = { blocks: [...scheduleTask.initialState.blocks,
+    { id: 'prep-a', kind: 'preparation' as const, day: 0, startMinute: 660, durationMinutes: 60 },
+    { id: 'prep-b', kind: 'preparation' as const, day: 0, startMinute: 690, durationMinutes: 60 },
+  ] };
   const inputs = [
     { signal: birthdayTask.evaluateSignals(birthdayTask.initialState)[0], context: birthdayTask.getAgentContext(birthdayTask.initialState) },
     { signal: weekendTask.evaluateSignals(weekendTask.initialState)[0], context: weekendTask.getAgentContext(weekendTask.initialState) },
-    { signal: scheduleTask.evaluateSignals(scheduleTask.initialState)[0], context: scheduleTask.getAgentContext(scheduleTask.initialState) },
+    { signal: scheduleTask.evaluateSignals(scheduleState).find(signal => signal.id === 'schedule:overlap:prep-a:prep-b')!, context: scheduleTask.getAgentContext(scheduleState) },
   ];
+  expect(scheduleState.blocks[5]).toEqual({ id: 'prep-a', kind: 'preparation', day: 0, startMinute: 660, durationMinutes: 60 });
   for (const provider of ['gemini', 'openai', 'openai-compatible']) {
     for (const input of inputs) {
       let calls = 0;
@@ -78,6 +83,16 @@ test('every provider receives the action-and-reason prompt and unmodified real t
         expect((await response.json()).promptVersion).toBe('intervention-prompt-v2');
         expect(calls).toBe(1);
         expect(observed[0].input).toEqual(input);
+        if (input.context.taskId === 'schedule') {
+          const received = observed[0].input as { context: { summary: Record<string, unknown> } };
+          expect(received.context.summary.plan).toMatchObject({ blocks: expect.arrayContaining([
+            expect.objectContaining({ id: 'prep-a', day: 0, startMinute: 660, weekday: 'Monday', startTime: '11:00', endTime: '12:00', description: 'Monday preparation, 11:00–12:00', editable: true }),
+            expect.objectContaining({ id: 'prep-b', description: 'Monday preparation, 11:30–12:30', editable: true }),
+            expect.objectContaining({ id: 'class-mon', description: 'Monday class, 09:00–11:00', editable: false }),
+          ]) });
+          expect(received.context.summary.constraints).toMatchObject({ dailyWindow: 'Monday–Friday 08:00–20:00', deadline: { label: 'Friday 17:00' } });
+          expect(JSON.stringify(received.context.summary).length).toBeLessThanOrEqual(12000);
+        }
         expect(observed[0].prompt).toMatch(/one specific.*action/i);
         expect(observed[0].prompt).toMatch(/brief reason/i);
         expect(observed[0].prompt).toMatch(/UI label/i);
