@@ -47,7 +47,7 @@ read-only and their exact presence is enforced by runtime edit/recovery guards.
 Scenario version3 records these explicit boundary/duration semantics.
 
 The shared lifecycle records every submission and validation result. Failed
-submissions show blocking requirements in a dismissible toast and in the workspace,
+submissions show blocking requirements in a dismissible toast,
 and retain active timing and editing. Successful submissions freeze the
 final plan, validation, elapsed milliseconds and successful completion time
 exactly once. Trial outcomes distinguish successful completion from exceptional
