@@ -170,7 +170,11 @@ signals. The evaluator never changes the validator or reads condition metadata.
 Generation context includes the current plan, fixed constraints and applicable
 catalog/travel/fixed-commitment data so advice can refer to fictional options.
 Context also describes supported UI edits and time encodings. Schedule block
-choices share the same editable-kind list as the workspace and mark fixed
+context includes readable weekday, start/end times, a description matching the
+workspace's block type and time range, and explicit editability. Selected-signal
+IDs can be matched to these descriptions without exposing IDs or minute offsets
+in advice; daily bounds and the preparation deadline have readable labels.
+Block choices share the same editable-kind list as the workspace and mark fixed
 commitments immutable. Prompt `intervention-prompt-v2` asks for one specific
 executable change plus a brief reason, grounded in available options and the
 current plan, rather than repeated task instructions. Optional improvements
