@@ -55,7 +55,7 @@ for (const endSchedule of ['successful', 'unsuccessful'] as const) {
     const priorEvents = await page.evaluate(() => JSON.parse(localStorage.getItem('planning-pilot-session-v1')!).events);
     const priorCalls = requests.length;
     await page.reload();
-    await expect(page.getByText('Dismissed', { exact: true })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'AI Assistant' })).toHaveCount(0);
     expect(requests).toHaveLength(priorCalls);
     await page.getByRole('button', { name: 'Complete task' }).click();
     await survey(page, true);

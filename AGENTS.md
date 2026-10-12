@@ -1,3 +1,7 @@
+## Branching
+
+Make all changes on a non-main branch. Before editing files or committing, create or switch to a branch other than `main`.
+
 ## Agent skills
 
 ### Issue tracker

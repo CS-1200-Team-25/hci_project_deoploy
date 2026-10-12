@@ -2,6 +2,24 @@ import type { AgentSignal } from '../types/agent';
 import type { ExperimentSession } from '../types/experiment';
 import { evaluateInterventions } from '../agent/engine';
 import { recordEvent } from './logger';
+import { getTask } from '../tasks/registry';
+
+/** Idle evaluations share edit policy without changing the participant's plan revision. */
+export function evaluateIdleTrial(session: ExperimentSession, now = Date.now()): ExperimentSession {
+  const trial = session.trials[session.currentTrialIndex];
+  if (session.phase !== 'task' || trial.status !== 'active' || trial.startedAt === undefined
+    || !session.configuration.conditions[trial.condition].proactive
+    || trial.agentHistory?.selections.some(selection => selection.resolvedAt === undefined)
+    || trial.agentHistory?.requests?.some(request => request.status === 'pending')) return session;
+  const lastEvaluation = session.events.filter(event => event.trialId === trial.id
+    && event.eventType === 'intervention_evaluation_summary').at(-1);
+  if (now - (lastEvaluation?.timestamp ?? trial.startedAt) < 30_000) return session;
+  const definition = getTask(trial.task);
+  if (!definition) return session;
+  return evaluateCommittedEdit(recordEvent(session, 'idle_assistance_evaluated', {
+    stateRevision: trial.stateRevision,
+  }, now), definition.evaluateSignals(trial.taskState), now);
+}
 
 /** Selection reserves a candidate; it never creates a request or claims exposure. */
 export function evaluateCommittedEdit(session: ExperimentSession, signals: AgentSignal[], now: number): ExperimentSession {

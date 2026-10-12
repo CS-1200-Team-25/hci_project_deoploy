@@ -69,6 +69,24 @@ editing/submission work.
 
 ## Verification
 
+Prompt `intervention-prompt-v2` requests one concrete edit plus a brief reason,
+using the available UI labels, current plan and constraints. Task summaries
+include supported edits and time encodings; schedule inputs list all editable
+block types and mark fixed commitments immutable. Catalogs, schema, model and
+the300-token output limit are unchanged. This is prompt guidance, not a semantic
+feasibility guarantee or automatic plan editing.
+
+For live qualitative samples, configure `.env` and run in PowerShell:
+
+    $env:RUN_LIVE_ADVICE = '1'
+    npx playwright test tests/advice-live.spec.ts --reporter=line
+    Remove-Item Env:RUN_LIVE_ADVICE
+
+This opt-in check starts its own local provider endpoint and sends three
+fictional plans. Review the printed advice for a named option or specific edit,
+a factual reason, and feasibility against the supplied plan. It is skipped in
+the normal suite; passing structural checks alone does not prove advice quality.
+
 Run npm run test:provider for controlled-upstream endpoint checks and npm test
 for browser/session checks. A live smoke run needs a real configured key and both
 services. In a non-baseline task, wait thirty seconds after reveal and edit while
@@ -76,6 +94,10 @@ leaving a qualifying issue. Confirm actual advice, the local generation request,
 and provider/model/context/latency/display records in the export. Acknowledge or
 dismiss advice and edit while waiting. Stop the service and trigger another
 eligible selection: confirm supervisor failure status and no fabricated advice.
+Visible non-baseline tasks also check unresolved issues after30 seconds of
+inactivity, without a plan edit. Thresholds and display cooldowns still apply;
+inactivity does not guarantee advice when no issue qualifies. Hidden tabs skip
+these checks, and reload waits a fresh30 seconds before checking.
 Baseline sends no proactive requests. Account access, real output quality and
 latency require this manual run; mocked tests cannot prove them.
 

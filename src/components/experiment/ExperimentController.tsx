@@ -20,6 +20,7 @@ import { validGenerationConfiguration } from '../../agent/generation';
 import type { GenerationConfiguration } from '../../agent/generation';
 import type { TaskAction } from '../../types/task';
 import { GenerationStatus } from './GenerationStatus';
+import { evaluateIdleTrial } from '../../experiment/interventions';
 
 export function ExperimentController() {
   const [recovery] = useState(() => {
@@ -120,11 +121,31 @@ export function ExperimentController() {
     };
   }, [recovery]);
 
+  useEffect(() => {
+    // Allow a fresh idle period after mounting; recovery never replays a selection.
+    const mountedAt = Date.now();
+    const timer = setInterval(() => {
+      if (document.visibilityState !== 'visible' || Date.now() - mountedAt < 30_000
+        || reloadIfStorageChanged()) return;
+      const previous = sessionRef.current;
+      if (!previous) return;
+      const next = evaluateIdleTrial(previous);
+      if (next === previous) return;
+      commit(next);
+      void generateSelectedAdvice(previous, next);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   async function editTask(state: unknown, action: TaskAction) {
     if (reloadIfStorageChanged()) return;
     const previous = sessionRef.current!;
     const next = updateTaskState(previous, state, action);
     commit(next);
+    await generateSelectedAdvice(previous, next);
+  }
+
+  async function generateSelectedAdvice(previous: ExperimentSession, next: ExperimentSession) {
     const selection = next.trials[next.currentTrialIndex].agentHistory?.selections.at(-1);
     if (!selection || selection.stateRevision !== next.trials[next.currentTrialIndex].stateRevision
       || previous.trials[previous.currentTrialIndex].agentHistory?.selections.some((candidate) => candidate.id === selection.id)) return;
@@ -219,6 +240,8 @@ export function ExperimentController() {
 
   function completeTask() {
     if (reloadIfStorageChanged()) return;
+    const current = sessionRef.current!;
+    if (current.trials[current.currentTrialIndex].agentHistory?.interventions?.some(advice => !advice.response)) return;
     const next = submitTask(sessionRef.current!);
     commit(next);
     const attempts = next.trials[next.currentTrialIndex].submissionAttempts;
@@ -233,7 +256,8 @@ export function ExperimentController() {
       assistant={{ interventions: trial.agentHistory?.interventions, onRespond: session.phase === 'task'
         ? (id, response) => commit(respondToIntervention(sessionRef.current!, id, response)) : undefined }}
       trialIndex={trial.startedAt !== undefined ? session.currentTrialIndex : undefined} startedAt={trial.startedAt} completedAt={trial.completedAt}
-      completionControl={session.phase === 'task' && definition ? { onComplete: completeTask } : false}>
+      completionControl={session.phase === 'task' && definition ? { onComplete: completeTask,
+        disabled: trial.agentHistory?.interventions?.some(advice => !advice.response) } : false}>
       {error && <p role="alert">{error}</p>}
       {session.phase === 'welcome' && <>
         <h2>Welcome to the planning pilot</h2>
@@ -247,7 +271,7 @@ export function ExperimentController() {
         <h2>Shared instructions</h2>
         <p>You will complete three planning tasks, each followed by a short survey. Use predefined options to build and revise each plan.</p>
         <p>Each scenario lists all minimum passing requirements. Complete task checks your plan; blocking errors must be corrected, while optional improvements do not prevent completion.</p>
-        <p>The assistant panel stays in the same place throughout. Suggestions may appear there, and you can acknowledge or dismiss them. There is no chat.</p>
+        <p>Assistant suggestions appear as toasts that stay visible while scrolling. Each stays until you acknowledge or dismiss it. Respond to all suggestions before completing the task. There is no chat.</p>
         <p>Timing begins when you reveal the scenario, including reading, editing and submission attempts. It continues through hidden tabs and reloads. There is no automatic timeout.</p>
         <button onClick={() => commit(revealTask(sessionRef.current!))}>Reveal first task</button>
       </>}

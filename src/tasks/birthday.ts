@@ -142,6 +142,17 @@ export const birthdayTask: ExperimentTask<BirthdayState> = {
   version: BIRTHDAY_CATALOG_VERSION,
   isState: isBirthdayState,
   validate: validateBirthday,
-  getAgentContext: (state) => ({ taskId: 'birthday', summary: { ...birthdaySummary(state), plan: structuredClone(state), catalog: BIRTHDAY_CATALOG, constraints: { guests: 12, budget: 300, startMinute: 840, endMinute: 1020, foodServings: 12, drinkServings: 12, requiredActivities: 1, decorationsOptional: true } } }),
+  getAgentContext: (state) => ({ taskId: 'birthday', summary: {
+    ...birthdaySummary(state), plan: structuredClone(state), catalog: BIRTHDAY_CATALOG,
+    editing: {
+      supportedEdits: [
+        'Add a catalog option or remove an existing selection. To replace an option, remove it and add the replacement.',
+        'Change the quantity of food, drink or decoration selections to a positive whole number.',
+        'Change each activity start time; activities are scheduled individually with fixed catalog durations.',
+      ],
+      timeEncoding: 'startMinute is whole minutes after midnight; present suggested times as HH:MM.',
+    },
+    constraints: { guests: 12, budget: 300, startMinute: 840, endMinute: 1020, foodServings: 12, drinkServings: 12, requiredActivities: 1, decorationsOptional: true },
+  } }),
   evaluateSignals: birthdaySignals,
 };

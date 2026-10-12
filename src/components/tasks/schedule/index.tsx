@@ -1,9 +1,8 @@
-import { WEEKDAYS, isFixedCommitment, scheduleSummary } from '../../../tasks/schedule';
+import { EDITABLE_SCHEDULE_KINDS, WEEKDAYS, isFixedCommitment, scheduleSummary } from '../../../tasks/schedule';
 import type { ScheduleBlock, ScheduleKind, ScheduleState } from '../../../tasks/schedule';
 import type { TaskAction } from '../../../types/task';
 
 function time(minutes: number) { return `${Math.floor(minutes / 60).toString().padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}`; }
-const editableKinds: ScheduleKind[] = ['preparation', 'meal', 'rest', 'exercise', 'buffer'];
 
 export function ScheduleWorkspace({ state, onChange }: { state: ScheduleState; onChange(state: ScheduleState, action: TaskAction): void }) {
   const editable = state.blocks.filter((block) => !isFixedCommitment(block));
@@ -25,7 +24,7 @@ export function ScheduleWorkspace({ state, onChange }: { state: ScheduleState; o
     {editable.map((block, index) => <fieldset className="plan-item" key={block.id}><legend>{block.kind} block {index + 1}</legend>
       <p>{WEEKDAYS[block.day]} · {time(block.startMinute)}–{time(block.startMinute + block.durationMinutes)}</p>
       <label>Block type<select value={block.kind} onChange={(event) => update(block, { kind: event.target.value as ScheduleKind }, 'item_updated')}>
-        {editableKinds.map((kind) => <option value={kind} key={kind}>{kind}</option>)}
+        {EDITABLE_SCHEDULE_KINDS.map((kind) => <option value={kind} key={kind}>{kind}</option>)}
       </select></label>
       <label>Day<select value={block.day} onChange={(event) => update(block, { day: Number(event.target.value) }, 'item_moved')}>
         {WEEKDAYS.map((day, dayIndex) => <option value={dayIndex} key={day}>{day}</option>)}

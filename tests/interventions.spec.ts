@@ -29,7 +29,7 @@ for (const [sequence, condition] of [[1, 'baseline'], [3, 'low'], [5, 'high']] a
     expect(evaluations[0].payload).toMatchObject({ signalId: 'birthday:coverage:food', signalType: 'coverage', rawSeverity: 0.6, recencyBonus: 0, triggered: condition === 'high' });
     expect(records.events.filter((event: { eventType: string }) => event.eventType === 'intervention_selected')).toHaveLength(condition === 'high' ? 1 : 0);
     expect(records.events.filter((event: { eventType: string }) => event.eventType === 'agent_intervention_shown')).toHaveLength(0);
-    await expect(page.getByText('No suggestions right now.', { exact: true })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'AI Assistant' })).toHaveCount(0);
     // Remove the initializer after the initial document so recovery uses the current saved record.
     const serialized = JSON.stringify(records);
     await page.addInitScript(({ key, value }) => localStorage.setItem(key, value), { key: SESSION_STORAGE_KEY, value: serialized });

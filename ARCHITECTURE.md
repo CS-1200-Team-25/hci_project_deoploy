@@ -17,7 +17,7 @@ Each participant sees every task and every condition exactly once. Assignment mu
 ## Non-negotiable design rules
 
 1. All tasks run inside one shared experiment shell. Do **not** create independent mini-apps with separate navigation.
-2. The shell layout, task controls, agent-panel location, and completion workflow remain identical in all conditions.
+2. The shell layout, task controls, toast location, and completion workflow remain identical in all conditions.
 3. Individual task components never decide which page comes next. They emit task-state changes and `completeTrial()` requests; the experiment controller owns navigation.
 4. The intervention engine uses deterministic, structured task signals. Do not let an LLM independently decide when to interrupt.
 5. The agent returns structured interventions; presentation belongs to the UI.
@@ -148,7 +148,7 @@ interface ExperimentTask<TState> {
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-The agent panel is always visible. In the baseline condition it should occupy the same space and say something neutral such as “No suggestions right now.” Do not remove or resize the panel by condition.
+The workspace uses the same full-width layout in every condition. Assistant suggestions appear as fixed, scrollable toasts only when there are unanswered interventions. They never time out: participants must acknowledge or dismiss each toast before completing the task, while editing remains available. Responses persist in the session records and remove the answered toast. Baseline has no proactive suggestions and no empty assistant section. Outstanding toasts recover on reload without recording another exposure.
 
 ## Intervention engine
 
@@ -346,7 +346,7 @@ src/
 ## Implementation order
 
 1. Define shared TypeScript types, trial sequences, and controller state machine.
-2. Build the static shared shell with placeholder task workspace and persistent agent panel.
+2. Build the static shared shell with placeholder task workspace and persistent assistant toasts.
 3. Implement welcome, instructions, post-task survey, final survey, and completion phases.
 4. Implement all three task workspaces against the shared task contract.
 5. Add validators and task evaluators with testable deterministic signals.

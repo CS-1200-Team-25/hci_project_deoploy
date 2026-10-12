@@ -190,7 +190,7 @@ test('scenario reveal starts elapsed time and passing validation remains require
   await expect(page.getByLabel('Elapsed time')).toHaveText('Elapsed01:05');
   await page.getByRole('button', { name: 'Complete task' }).click();
   await expect(page.getByRole('alert')).toContainText('four preparation hours');
-  await expect(page.getByRole('complementary', { name: 'AI Assistant' })).toBeVisible();
+  await expect(page.getByRole('complementary', { name: 'AI Assistant' })).toHaveCount(0);
   await expect(page.getByText(/baseline|low eagerness|high eagerness/i)).toHaveCount(0);
 });
 

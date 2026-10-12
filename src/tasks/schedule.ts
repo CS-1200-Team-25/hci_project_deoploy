@@ -5,6 +5,7 @@ import { PILOT_SCENARIOS } from '../experiment/scenarios';
 export const SCHEDULE_VERSION = 'schedule-fixture-v1';
 export const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] as const;
 export type ScheduleKind = 'class' | 'work' | 'preparation' | 'meal' | 'rest' | 'exercise' | 'buffer';
+export const EDITABLE_SCHEDULE_KINDS = ['preparation', 'meal', 'rest', 'exercise', 'buffer'] as const;
 export interface ScheduleBlock { id: string; kind: ScheduleKind; day: number; startMinute: number; durationMinutes: number }
 export interface ScheduleState { blocks: ScheduleBlock[] }
 export const FIXED_COMMITMENTS: ScheduleBlock[] = [
@@ -122,5 +123,19 @@ export function evaluateScheduleSignals(state: ScheduleState): AgentSignal[] {
 export const scheduleTask: ExperimentTask<ScheduleState> = {
   id: 'schedule', title: PILOT_SCENARIOS.schedule.title, instructions: PILOT_SCENARIOS.schedule.instructions,
   version: SCHEDULE_VERSION, initialState: { blocks: structuredClone(FIXED_COMMITMENTS) }, isState: isScheduleState,
-  validate: validateSchedule, getAgentContext: (state) => ({ taskId: 'schedule', summary: { ...scheduleSummary(state), plan: structuredClone(state), fixedCommitments: FIXED_COMMITMENTS, constraints: { weekdays: WEEKDAYS, startMinute: 480, endMinute: 1200, preparationMinutes: 240, deadline: { day: 4, minute: 1020 }, optionalKinds: ['meal', 'rest', 'exercise', 'buffer'] } } }), evaluateSignals: evaluateScheduleSignals,
+  validate: validateSchedule, getAgentContext: (state) => ({ taskId: 'schedule', summary: {
+    ...scheduleSummary(state), plan: structuredClone(state),
+    fixedCommitments: FIXED_COMMITMENTS.map(block => ({ ...block, label: `${WEEKDAYS[block.day]} ${block.kind}` })),
+    editing: {
+      editableBlockKinds: EDITABLE_SCHEDULE_KINDS,
+      fixedCommitmentsEditable: false,
+      supportedEdits: [
+        'Add a preparation or optional block, or remove an editable block. Add optional block initially creates a meal block; change Block type for rest, exercise or buffer.',
+        'Change an editable block type, day, start time and duration (positive whole minutes).',
+        'Fixed class and work commitments cannot be moved, changed or removed.',
+      ],
+      timeEncoding: 'day is 0 Monday through 4 Friday; startMinute is whole minutes after midnight. Present suggested times with weekday and HH:MM.',
+    },
+    constraints: { weekdays: WEEKDAYS, startMinute: 480, endMinute: 1200, preparationMinutes: 240, deadline: { day: 4, minute: 1020 }, optionalKinds: ['meal', 'rest', 'exercise', 'buffer'] },
+  } }), evaluateSignals: evaluateScheduleSignals,
 };
