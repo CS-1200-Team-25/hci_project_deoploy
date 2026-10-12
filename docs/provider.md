@@ -76,6 +76,10 @@ leaving a qualifying issue. Confirm actual advice, the local generation request,
 and provider/model/context/latency/display records in the export. Acknowledge or
 dismiss advice and edit while waiting. Stop the service and trigger another
 eligible selection: confirm supervisor failure status and no fabricated advice.
+Visible non-baseline tasks also check unresolved issues after30 seconds of
+inactivity, without a plan edit. Thresholds and display cooldowns still apply;
+inactivity does not guarantee advice when no issue qualifies. Hidden tabs skip
+these checks, and reload waits a fresh30 seconds before checking.
 Baseline sends no proactive requests. Account access, real output quality and
 latency require this manual run; mocked tests cannot prove them.
 

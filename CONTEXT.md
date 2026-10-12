@@ -106,8 +106,12 @@ scores .35 × gap/180 (optional efficiency). All scores clamp to[0,1]. Stable
 category IDs remain unchanged across revisions; pair IDs sort item IDs.
 
 Policy version2 disables baseline explicitly; low/high thresholds are .75/.4.
-Meaningful committed birthday edits evaluate; reveal, unchanged edits and reload
-do not. Recency uses the last actual display, or trial start:0 below30 seconds,
+Meaningful committed edits evaluate across all tasks. Visible active tasks also
+evaluate after30 seconds without an evaluation, using the same policy and
+generation path without changing plan revisions. Baseline, pending requests and
+reserved selections skip idle checks. Mount/reload waits a fresh30 seconds;
+hidden tabs skip checks. Reveal, unchanged edits and reload do not immediately
+evaluate or replay requests. Recency uses the last actual display, or trial start:0 below30 seconds,
 .05 at30, .1 at60 and .2 at120, then remains bounded. Final score caps at1.
 Actual displays impose30-second global and60-second per-signal cooldowns.
 Resolved, in-flight, reserved and cooling candidates are excluded before
@@ -139,6 +143,11 @@ records. Reload restores shown history without creating another exposure or
 replaying generation. Acknowledgement and dismissal record explicit participant
 responses; lack of acknowledgement is not classified as ignoring. Recovery
 checks generation identity and displayed-history integrity.
+Assistance appears in fixed, scrollable toasts instead of a sidebar. Active
+suggestions never time out and close only on explicit acknowledgement or
+dismissal. Unanswered suggestions persist through reload; successful task
+submission requires responding to them first. Editing remains available.
+Responded suggestions remain in the session/export records, not on screen.
 
 Session exports use `planning-pilot-export-v1`: a lossless session snapshot
 (excluding the supervisor verifier), original ordered events, explicit millisecond
@@ -158,7 +167,8 @@ Generation context includes the current plan, fixed constraints and applicable
 catalog/travel/fixed-commitment data so advice can refer to fictional options.
 The shared endpoint, prompt, model settings, policy and presentation serve all
 three tasks; only selected signals request generation. Reveal and recovery do
-not evaluate or request advice. Session versions incompatible with this draft
+not immediately evaluate or request advice; visible inactivity can trigger a
+fresh evaluation after30 seconds. Session versions incompatible with this draft
 are preserved and rejected, rather than silently converted for a new pilot.
 
 Severity conventions: missing required selections score .85; missing day

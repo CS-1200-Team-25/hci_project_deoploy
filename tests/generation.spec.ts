@@ -24,16 +24,56 @@ test('selected advice is displayed once, persisted and acknowledged while editin
   await seed(page);
   await page.getByRole('button', { name: 'Add Sandwich platter' }).click();
   await expect(page.getByText('Choose enough drinks for all twelve guests.')).toBeVisible();
+  const toast = page.getByRole('region', { name: 'AI Assistant' });
+  await expect(toast).toBeVisible();
+  await expect(page.getByRole('complementary', { name: 'AI Assistant' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Complete task' })).toBeDisabled();
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  const viewport = page.viewportSize()!;
+  const bounds = await toast.boundingBox();
+  expect(bounds!.y).toBeGreaterThanOrEqual(0);
+  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(viewport.height);
   await page.getByRole('button', { name: 'Acknowledge' }).click();
   const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), SESSION_STORAGE_KEY);
   expect(saved.events.filter((event: { eventType: string }) => event.eventType === 'agent_intervention_shown')).toHaveLength(1);
   expect(saved.events.filter((event: { eventType: string }) => event.eventType === 'agent_intervention_acknowledged')).toHaveLength(1);
   expect(saved.trials[0].agentHistory.requests[0].status).toBe('succeeded');
   await page.reload();
-  await expect(page.getByText('Acknowledged', { exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'AI Assistant' })).toHaveCount(0);
   expect(calls).toBe(1);
   expect((await records(page)).events.filter((event: { eventType: string }) => event.eventType === 'agent_intervention_shown')).toHaveLength(1);
   await expect(page.getByRole('button', { name: 'Complete task' })).toBeEnabled();
+});
+
+test('toast persists without timeout through reload and dismiss records the explicit response', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.clock.install();
+  await page.route('**/api/interventions/config', route => route.fulfill({ json: config }));
+  await page.route('**/api/interventions', route => {
+    const request = route.request().postDataJSON();
+    return route.fulfill({ json: { ...config, signalId: request.signal.id, type: 'suggestion', message: 'Persistent toast advice.', target: null } });
+  });
+  await seed(page);
+  await page.getByRole('button', { name: 'Add Sandwich platter' }).click();
+  const toast = page.getByRole('region', { name: 'AI Assistant' });
+  await expect(toast).toContainText('Persistent toast advice.');
+  await page.clock.fastForward(120000);
+  await expect(toast.getByText('Persistent toast advice.').first()).toBeVisible();
+  await page.reload();
+  await expect(toast).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  const bounds = await toast.boundingBox();
+  expect(bounds!.y).toBeGreaterThanOrEqual(0);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
+  while (await toast.count()) await toast.getByRole('button', { name: 'Dismiss', exact: true }).first().click();
+  await expect(page.getByRole('button', { name: 'Complete task' })).toBeEnabled();
+  const saved = await records(page);
+  expect(saved.trials[0].agentHistory.interventions.every((advice: { response?: string }) => advice.response === 'dismissed')).toBe(true);
+  const displays = saved.events.filter((event: { eventType: string }) => event.eventType === 'agent_intervention_shown');
+  const dismissals = saved.events.filter((event: { eventType: string }) => event.eventType === 'agent_intervention_dismissed');
+  expect(dismissals).toHaveLength(displays.length);
+  await page.reload();
+  await expect(toast).toHaveCount(0);
 });
 
 for (const failure of ['invalid', 'provider', 'transport'] as const) {
@@ -45,7 +85,7 @@ for (const failure of ['invalid', 'provider', 'transport'] as const) {
     await page.getByRole('button', { name: 'Add Sandwich platter' }).click();
     await expect.poll(async () => (await records(page)).trials[0].agentHistory.requests[0].status).toBe(failure === 'invalid' ? 'invalid' : 'failed');
     expect((await records(page)).events.filter((event: { eventType: string }) => event.eventType === 'agent_intervention_shown')).toHaveLength(0);
-    await expect(page.getByText('No suggestions right now.')).toBeVisible();
+    await expect(page.getByRole('region', { name: 'AI Assistant' })).toHaveCount(0);
     await expect(page.getByRole('status', { name: 'Supervisor generation status' })).toContainText('Assistant generation');
     await expect(page.getByRole('status', { name: 'Supervisor generation status' })).toContainText('Editing and submission remain available');
     await page.getByRole('button', { name: 'Complete task' }).click();
@@ -104,7 +144,7 @@ test('finite timeout and reload interrupt generation without replay', async ({ p
   await page.reload();
   await expect.poll(async () => (await records(page)).trials[0].agentHistory.requests[1].status).toBe('interrupted');
   expect(calls).toBe(2);
-  await expect(page.getByText('No suggestions right now.')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'AI Assistant' })).toHaveCount(0);
 });
 
 test('baseline never makes a proactive provider request', async ({ page }) => {
@@ -113,6 +153,6 @@ test('baseline never makes a proactive provider request', async ({ page }) => {
   await page.route('**/api/interventions', (route) => { calls++; return route.abort(); });
   await seed(page, 1);
   await page.getByRole('button', { name: 'Add Sandwich platter' }).click();
-  await expect(page.getByText('No suggestions right now.')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'AI Assistant' })).toHaveCount(0);
   expect(calls).toBe(0);
 });

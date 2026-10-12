@@ -41,7 +41,7 @@ function validAgentHistory(trial: Record<string, unknown>, sessionId: string): b
       || typeof selection.signal.severity !== 'number' || !Number.isFinite(selection.signal.severity)
       || selection.signal.severity < 0 || selection.signal.severity > 1
       || !Number.isFinite(selection.selectedAt) || (selection.selectedAt as number) < (trial.startedAt as number)
-      || !Number.isSafeInteger(selection.stateRevision) || (selection.stateRevision as number) < 1
+      || !Number.isSafeInteger(selection.stateRevision) || (selection.stateRevision as number) < 0
       || (selection.stateRevision as number) > (trial.stateRevision as number)
       || (selection.resolvedAt !== undefined && (!Number.isFinite(selection.resolvedAt) || (selection.resolvedAt as number) < (selection.selectedAt as number)))
       || (selection.resolvedAt === undefined && reserved.has(selection.signal.id))) return false;
