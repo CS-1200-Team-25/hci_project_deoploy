@@ -177,5 +177,18 @@ export const weekendTask: ExperimentTask<WeekendState> = {
   id: 'weekend', title: PILOT_SCENARIOS.weekend.title, instructions: PILOT_SCENARIOS.weekend.instructions,
   version: WEEKEND_CATALOG_VERSION, initialState: { lodgingId: null, transportId: null, activities: [] },
   isState: isWeekendState, validate: validateWeekend,
-  getAgentContext: (state) => ({ taskId: 'weekend', summary: { ...weekendSummary(state), plan: structuredClone(state), constraints: { budget: 500, activitiesPerDay: 2, ...WEEKEND_BOUNDARIES }, activities: WEEKEND_ACTIVITIES, lodging: WEEKEND_LODGING, transport: WEEKEND_TRANSPORT, travel: WEEKEND_TRAVEL } }), evaluateSignals: evaluateWeekendSignals,
+  getAgentContext: (state) => ({ taskId: 'weekend', summary: {
+    ...weekendSummary(state), plan: structuredClone(state),
+    constraints: { budget: 500, activitiesPerDay: 2, ...WEEKEND_BOUNDARIES },
+    activities: WEEKEND_ACTIVITIES, lodging: WEEKEND_LODGING, transport: WEEKEND_TRANSPORT, travel: WEEKEND_TRAVEL,
+    editing: {
+      supportedEdits: [
+        'Select, replace or clear lodging and transport using the provided options.',
+        'Add a catalog activity or remove an existing booking.',
+        'Change the activity option of an existing booking; its price, duration and location follow the new option.',
+        'Change a booking day (Saturday or Sunday) and start time; activity durations and opening windows cannot be edited.',
+      ],
+      timeEncoding: 'Booking startMinute and trip boundaries are minutes from Saturday 00:00; Sunday adds 1440. Opening-window start/end are local minutes after midnight on window.day (0 Saturday, 1 Sunday). Present suggested times with day and HH:MM.',
+    },
+  } }), evaluateSignals: evaluateWeekendSignals,
 };

@@ -165,6 +165,13 @@ birthday rules above and adds condition-independent weekend and schedule
 signals. The evaluator never changes the validator or reads condition metadata.
 Generation context includes the current plan, fixed constraints and applicable
 catalog/travel/fixed-commitment data so advice can refer to fictional options.
+Context also describes supported UI edits and time encodings. Schedule block
+choices share the same editable-kind list as the workspace and mark fixed
+commitments immutable. Prompt `intervention-prompt-v2` asks for one specific
+executable change plus a brief reason, grounded in available options and the
+current plan, rather than repeated task instructions. Optional improvements
+remain optional. Model, output schema and300-token limit are unchanged; this
+guidance does not guarantee semantic feasibility or apply edits automatically.
 The shared endpoint, prompt, model settings, policy and presentation serve all
 three tasks; only selected signals request generation. Reveal and recovery do
 not immediately evaluate or request advice; visible inactivity can trigger a

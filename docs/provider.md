@@ -69,6 +69,24 @@ editing/submission work.
 
 ## Verification
 
+Prompt `intervention-prompt-v2` requests one concrete edit plus a brief reason,
+using the available UI labels, current plan and constraints. Task summaries
+include supported edits and time encodings; schedule inputs list all editable
+block types and mark fixed commitments immutable. Catalogs, schema, model and
+the300-token output limit are unchanged. This is prompt guidance, not a semantic
+feasibility guarantee or automatic plan editing.
+
+For live qualitative samples, configure `.env` and run in PowerShell:
+
+    $env:RUN_LIVE_ADVICE = '1'
+    npx playwright test tests/advice-live.spec.ts --reporter=line
+    Remove-Item Env:RUN_LIVE_ADVICE
+
+This opt-in check starts its own local provider endpoint and sends three
+fictional plans. Review the printed advice for a named option or specific edit,
+a factual reason, and feasibility against the supplied plan. It is skipped in
+the normal suite; passing structural checks alone does not prove advice quality.
+
 Run npm run test:provider for controlled-upstream endpoint checks and npm test
 for browser/session checks. A live smoke run needs a real configured key and both
 services. In a non-baseline task, wait thirty seconds after reveal and edit while
