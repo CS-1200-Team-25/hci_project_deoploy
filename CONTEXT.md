@@ -70,7 +70,9 @@ Recovery validates rating ranges, display-linked eligibility and phase gates.
 The supervisor sets an access code at session setup. Only a verified code issues
 an in-memory authorization for exceptional termination of that session. Codes
 are stored as salted verifiers; authorization is not persisted and reload
-relocks controls. This is a local supervised safeguard, not remote authentication
+relocks controls. A fixed bottom-left supervisor icon opens a side drawer with
+access and storage tools, keeping them outside the participant workspace.
+This is a local supervised safeguard, not remote authentication
 or protection against a participant modifying the application/browser storage.
 
 Task time begins when the scenario is revealed. Persisted wall-clock anchors

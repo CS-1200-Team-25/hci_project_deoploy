@@ -1,6 +1,8 @@
+import { openSupervisorTools } from './supervisor-tools';
 import { expect, test, type Page } from '@playwright/test';
 
 async function downloadSession(page: Page) {
+  await openSupervisorTools(page);
   await page.getByText('Supervisor storage tools', { exact: true }).click();
   const downloaded = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download session JSON' }).click();
@@ -79,6 +81,7 @@ test('completed export preserves unsuccessful durations, successful timing and r
   for (let index = 0; index < 3; index++) {
     if (index > 0) {
       await page.clock.runFor(10000);
+      await openSupervisorTools(page);
       await page.getByText('Supervisor access', { exact: true }).click();
       await page.getByLabel('Supervisor access code').fill('research-only');
       await page.getByRole('button', { name: 'Unlock supervisor controls' }).click();
