@@ -67,9 +67,11 @@ export interface ExperimentEvent {
 }
 
 /** Fixed pilot-draft instruments submitted through controller-owned phase gates. */
+export type SurveyRating = number | 'not-applicable';
+
 export interface PostTaskSurvey {
-  helpfulness: number | 'not-applicable';
-  interruption: number;
+  helpfulness: SurveyRating;
+  interruption: SurveyRating;
   submittedAt: number;
 }
 export type PostTaskSurveyDraft = Partial<Pick<PostTaskSurvey, 'helpfulness' | 'interruption'>>;

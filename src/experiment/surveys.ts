@@ -9,8 +9,8 @@ export function assistanceWasDisplayed(session: ExperimentSession, trialId: stri
   return session.events.some((event) => event.trialId === trialId && event.eventType === 'agent_intervention_shown');
 }
 export function validPostTaskDraft(session: ExperimentSession, trialId: string, draft: PostTaskSurveyDraft) {
-  return (draft.helpfulness === undefined || isRating(draft.helpfulness) || (draft.helpfulness === 'not-applicable' && !assistanceWasDisplayed(session, trialId)))
-    && (draft.interruption === undefined || isRating(draft.interruption));
+  return [draft.helpfulness, draft.interruption].every((answer) => answer === undefined || isRating(answer)
+    || (answer === 'not-applicable' && !assistanceWasDisplayed(session, trialId)));
 }
 export function setPostTaskSurveyDraft(session: ExperimentSession, draft: PostTaskSurveyDraft, now = Date.now()): ExperimentSession {
   const trial = session.trials[session.currentTrialIndex];
@@ -68,7 +68,7 @@ export function validSurveyState(session: ExperimentSession) {
   for (const [trialId, survey] of Object.entries(session.postTaskSurveys)) {
     const trial = session.trials.find((candidate) => candidate.id === trialId);
     if (!trial || (trial.status !== 'completed' && trial.status !== 'terminated') || !isSurveyRecord(survey)
-      || !validPostTaskDraft(session, trialId, survey) || survey.helpfulness === undefined || !isRating(survey.interruption)
+      || !validPostTaskDraft(session, trialId, survey) || survey.helpfulness === undefined || survey.interruption === undefined
       || !Number.isFinite(survey.submittedAt) || survey.submittedAt < (trial.completedAt ?? Infinity)) return false;
   }
   const needsAll = session.phase === 'final-survey' || session.phase === 'complete';

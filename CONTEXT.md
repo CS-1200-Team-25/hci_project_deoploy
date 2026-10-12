@@ -59,7 +59,7 @@ before the controller reveals the next assigned scenario and starts its timer.
 Survey instrument version1 is a fixed pilot draft, not a recruitment-approved
 instrument. Helpfulness uses1=not at all helpful and7=extremely helpful;
 interruption uses1=not at all interruptive and7=extremely interruptive. Both
-responses are required. Helpfulness can instead be the distinct string
+responses are required. Either response can instead be the distinct string
 `not-applicable` when that trial has no recorded assistance-display event.
 Drafts persist with ordered events. Submitted responses cannot be changed or
 submitted twice. The final instrument requires a trial experience by task/order

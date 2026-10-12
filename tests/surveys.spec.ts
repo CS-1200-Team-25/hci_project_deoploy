@@ -7,7 +7,7 @@ import { recordEvent } from '../src/experiment/logger';
 import { birthdayTask } from '../src/tasks/birthday';
 import { loadSession, saveSession } from '../src/experiment/persistence';
 
-test('not-applicable helpfulness is rejected after displayed assistance and damaged survey recovery is preserved', () => {
+test('not-applicable answers are rejected after displayed assistance and damaged survey recovery is preserved', () => {
   const active = revealTask(consentToSession(createSession('Q004', 1, 1000), 1500), 2000);
   const plan = { items: [
     { id: 'food', optionId: 'wrap-buffet', quantity: 1 }, { id: 'drink', optionId: 'water-pack', quantity: 1 },
@@ -15,8 +15,15 @@ test('not-applicable helpfulness is rejected after displayed assistance and dama
   ] };
   expect(birthdayTask.validate(plan).isComplete).toBe(true);
   const ended = submitTask(updateTaskState(active, plan, { type: 'item_updated', payload: {} }, 2500), 3000);
+  const draft = setPostTaskSurveyDraft(ended, { helpfulness: 'not-applicable', interruption: 'not-applicable' }, 3050);
+  const submitted = submitPostTaskSurvey(draft, 3075);
+  let saved: string | null = null;
+  const validStorage = { getItem: () => saved, setItem: (_key: string, value: string) => { saved = value; } };
+  saveSession(submitted, validStorage, 3080);
+  expect(loadSession(validStorage)?.postTaskSurveys[ended.trials[0].id].interruption).toBe('not-applicable');
   const exposed = recordEvent(ended, 'agent_intervention_shown', {}, 3100);
   expect(() => setPostTaskSurveyDraft(exposed, { helpfulness: 'not-applicable', interruption: 1 })).toThrow(/not-applicable/);
+  expect(() => setPostTaskSurveyDraft(exposed, { helpfulness: 4, interruption: 'not-applicable' })).toThrow(/not-applicable/);
   const invalid = [
     { ...ended, postTaskSurveyDrafts: { [ended.trials[0].id]: { helpfulness: 8 } } },
     { ...ended, postTaskSurveys: { [ended.trials[0].id]: { helpfulness: 4, interruption: 1, submittedAt: 3200 } } },
@@ -51,7 +58,9 @@ test('all three real tasks, persisted survey drafts and final trial preference r
   await page.reload();
   await expect(page.getByLabel('Helpfulness rating')).toHaveValue('not-applicable');
   await expect(page.getByRole('button', { name: 'Submit post-task survey' })).toBeDisabled();
-  await page.getByLabel('Interruption rating').selectOption('1');
+  await page.getByLabel('Interruption rating').selectOption('not-applicable');
+  await page.reload();
+  await expect(page.getByLabel('Interruption rating')).toHaveValue('not-applicable');
   await page.getByRole('button', { name: 'Submit post-task survey' }).click();
   await expect(page.getByRole('heading', { name: 'Weekend-itinerary planning', exact: true })).toBeVisible();
   await page.getByLabel('Saturday-night lodging').selectOption('guesthouse');
@@ -96,6 +105,7 @@ test('all three real tasks, persisted survey drafts and final trial preference r
   expect(session.trials.map((trial: { status: string }) => trial.status)).toEqual(['completed', 'completed', 'completed']);
   expect(session.finalSurvey.preferredTrialId).toBe(session.trials[1].id);
   expect(session.postTaskSurveys[session.trials[0].id].helpfulness).toBe('not-applicable');
+  expect(session.postTaskSurveys[session.trials[0].id].interruption).toBe('not-applicable');
   expect(session.events.filter((event: { eventType: string }) => event.eventType === 'post_task_survey_submitted')).toHaveLength(3);
   expect(session.events.filter((event: { eventType: string }) => event.eventType === 'final_survey_submitted')).toHaveLength(1);
 });
