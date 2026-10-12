@@ -94,6 +94,7 @@ export interface ExperimentSession {
   configuration: PilotConfiguration;
   events: ExperimentEvent[];
   lastSavedAt: number;
+  persistedAt?: number;
   consentedAt?: number;
   postTaskSurveys: Record<string, PostTaskSurvey>;
   postTaskSurveyDrafts: Record<string, PostTaskSurveyDraft>;

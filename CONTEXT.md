@@ -125,6 +125,16 @@ output limit and finite timeout are shared across active conditions and recorded
 with every request; condition is never sent to the provider. The provider key
 stays on the server. See `docs/provider.md` for startup and live smoke checks.
 
+Session exports use `planning-pilot-export-v1`: a lossless session snapshot
+(excluding the supervisor verifier), original ordered events, explicit millisecond
+units, derived selection/display counts and distinct successful versus unsuccessful
+durations. The document includes scenario, catalog, travel matrix, schedule and
+survey snapshots. Future session fields such as generation records are retained
+without rebuilding them in the exporter. Downloads never clear local data and
+cannot confirm that a file was saved. Failure events flag compromised retention;
+`persistedAt` records the last successful save, independently of export time.
+Supervisor storage tools offer downloads throughout the participant flow.
+
 Generation permits one pending request per trial. Every meaningful edit cancels
 its prior revision; completion, termination and reload also end pending requests.
 Late responses cannot display. Responses are validated against selection and

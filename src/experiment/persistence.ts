@@ -10,7 +10,7 @@ export const SESSION_STORAGE_KEY = 'planning-pilot-session-v1';
 type SessionStorage = Pick<Storage, 'getItem' | 'setItem'>;
 
 export function saveSession(session: ExperimentSession, storage: SessionStorage = localStorage, now = Date.now()): ExperimentSession {
-  const saved = { ...session, lastSavedAt: now };
+  const saved = { ...session, lastSavedAt: now, persistedAt: now };
   storage.setItem(SESSION_STORAGE_KEY, JSON.stringify(saved));
   return saved;
 }
@@ -125,6 +125,7 @@ export function loadSession(storage: SessionStorage = localStorage): ExperimentS
     || !Number.isSafeInteger(value.sequenceIndex) || (value.sequenceIndex as number) < 1 || (value.sequenceIndex as number) > 36
     || !['welcome', 'instructions', 'task', 'post-task-survey', 'final-survey', 'complete'].includes(String(value.phase))
     || !Number.isFinite(value.startedAt) || !Number.isFinite(value.lastSavedAt)
+    || (value.persistedAt !== undefined && (!Number.isFinite(value.persistedAt) || value.persistedAt !== value.lastSavedAt))
     || !Number.isInteger(value.currentTrialIndex) || (value.currentTrialIndex as number) < 0 || (value.currentTrialIndex as number) > 2
     || !Array.isArray(value.trials) || value.trials.length !== 3 || !Array.isArray(value.events)
     || !isRecord(value.postTaskSurveys) || !isRecord(value.postTaskSurveyDrafts) || !isRecord(value.finalSurveyDraft)
