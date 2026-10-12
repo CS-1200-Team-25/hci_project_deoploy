@@ -12,6 +12,7 @@ export function IssueScoreInspector({ session }: { session: ExperimentSession })
 
   return <details className="supervisor-controls" onToggle={event => setOpen(event.currentTarget.open)}>
     <summary>AI issue scores (testing)</summary>
+    {open && <>
     <p>Deterministic task rules calculate severity. finalScore = min(1, severity + recencyBonus).
       Eligibility requires finalScore ≥ threshold and no exclusion; only the highest eligible score is selected.</p>
     <p>Threshold: {policy.threshold === null ? 'disabled (baseline)' : policy.threshold.toFixed(2)}.
@@ -36,6 +37,7 @@ export function IssueScoreInspector({ session }: { session: ExperimentSession })
           </dl>
         </li>)}
       </ul>
+    </>}
     </>}
   </details>;
 }
