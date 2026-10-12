@@ -9,11 +9,13 @@ export function evaluateIdleTrial(session: ExperimentSession, now = Date.now()):
   const trial = session.trials[session.currentTrialIndex];
   if (session.phase !== 'task' || trial.status !== 'active' || trial.startedAt === undefined
     || !session.configuration.conditions[trial.condition].proactive
+    || trial.agentHistory?.interventions?.some(advice => !advice.response)
     || trial.agentHistory?.selections.some(selection => selection.resolvedAt === undefined)
     || trial.agentHistory?.requests?.some(request => request.status === 'pending')) return session;
   const lastEvaluation = session.events.filter(event => event.trialId === trial.id
     && event.eventType === 'intervention_evaluation_summary').at(-1);
-  if (now - (lastEvaluation?.timestamp ?? trial.startedAt) < 30_000) return session;
+  const lastResponse = Math.max(0, ...(trial.agentHistory?.interventions ?? []).map(advice => advice.respondedAt ?? 0));
+  if (now - Math.max(lastEvaluation?.timestamp ?? trial.startedAt, lastResponse) < 30_000) return session;
   const definition = getTask(trial.task);
   if (!definition) return session;
   return evaluateCommittedEdit(recordEvent(session, 'idle_assistance_evaluated', {
@@ -30,6 +32,7 @@ export function evaluateCommittedEdit(session: ExperimentSession, signals: Agent
     ? { ...selection, resolvedAt: now } : selection);
   const result = evaluateInterventions(signals, session.configuration.conditions[trial.condition], {
     now, trialStartedAt: trial.startedAt!, displays: history.displays,
+    hasUnansweredIntervention: history.interventions?.some(advice => !advice.response),
     inFlightSignalIds: history.inFlightSignalIds,
     reservedSignalIds: selections.filter((selection) => selection.resolvedAt === undefined).map((selection) => selection.signal.id),
     resolvedSignalIds: [], displayCooldowns: session.configuration.displayCooldowns,

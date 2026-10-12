@@ -13,6 +13,36 @@ async function seed(page: Page, sequence = 5) {
 async function records(page: Page) {
   return page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), SESSION_STORAGE_KEY);
 }
+test('edits and recovery retain one unanswered toast and response restarts the idle wait', async ({ page }) => {
+  await page.clock.install();
+  let calls = 0;
+  await page.route('**/api/interventions/config', route => route.fulfill({ json: config }));
+  await page.route('**/api/interventions', route => {
+    calls++;
+    const request = route.request().postDataJSON();
+    return route.fulfill({ json: { ...config, signalId: request.signal.id, type: 'suggestion', message: `Advice ${calls}`, target: null } });
+  });
+  await seed(page);
+  await page.getByRole('button', { name: 'Add Sandwich platter' }).click();
+  await expect(page.getByText('Advice 1', { exact: true })).toBeVisible();
+  await page.clock.fastForward(120000);
+  await page.reload();
+  await expect(page.getByText('Advice 1', { exact: true })).toBeVisible();
+  await page.clock.fastForward(120000);
+  await page.getByRole('button', { name: 'Add Water pack' }).click();
+  const edited = await records(page);
+  expect(edited.trials[0].stateRevision).toBe(2);
+  expect(edited.trials[0].agentHistory.selections).toHaveLength(1);
+  expect(edited.events.filter((event: { eventType: string }) => event.eventType === 'signal_resolved').at(-1).payload.signalId).toBe('birthday:missing:drink');
+  expect(edited.events.filter((event: { eventType: string }) => event.eventType === 'intervention_evaluation_summary').at(-1).payload.selectedSignalId).toBeNull();
+  expect(calls).toBe(1);
+  await page.getByRole('button', { name: 'Dismiss', exact: true }).click();
+  await page.clock.fastForward(29000);
+  expect(calls).toBe(1);
+  await page.clock.fastForward(1000);
+  await expect(page.getByText('Advice 2', { exact: true })).toBeVisible();
+  expect(calls).toBe(2);
+});
 test('selected advice is displayed once, persisted and acknowledged while editing stays usable', async ({ page }) => {
   let calls = 0;
   await page.route('**/api/interventions/config', (route) => route.fulfill({ json: config }));

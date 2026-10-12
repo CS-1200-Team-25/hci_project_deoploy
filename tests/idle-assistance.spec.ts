@@ -2,7 +2,23 @@ import { expect, test, type Page } from '@playwright/test';
 import { consentToSession, createSession, revealTask } from '../src/experiment/session';
 import { SESSION_STORAGE_KEY } from '../src/experiment/persistence';
 import { evaluateIdleTrial } from '../src/experiment/interventions';
-import { beginGeneration } from '../src/experiment/generation';
+import { beginGeneration, finishGeneration, respondToIntervention } from '../src/experiment/generation';
+
+test('unanswered advice blocks idle assistance until a full idle period after responding', () => {
+  const active = revealTask(consentToSession(createSession('RESPONSE_IDLE', 5, 1000), 1000), 1000);
+  const selected = evaluateIdleTrial(active, 31000);
+  const pending = beginGeneration(selected, selected.trials[0].agentHistory!.selections[0].id, config, 31000);
+  const request = pending.trials[0].agentHistory!.requests![0];
+  const shown = finishGeneration(pending, request.id, 'succeeded', { ...config, signalId: request.request.signal.id,
+    type: 'suggestion', message: 'Advice awaiting a response.', target: null }, undefined, 32000);
+  expect(shown.trials[0].agentHistory!.interventions).toHaveLength(1);
+  expect(evaluateIdleTrial(shown, 180000)).toBe(shown);
+  for (const response of ['acknowledged', 'dismissed'] as const) {
+    const answered = respondToIntervention(shown, shown.trials[0].agentHistory!.interventions![0].id, response, 180000);
+    expect(evaluateIdleTrial(answered, 209999)).toBe(answered);
+    expect(evaluateIdleTrial(answered, 210000).trials[0].agentHistory!.selections).toHaveLength(2);
+  }
+});
 
 const config = { model: 'idle-fixture', promptVersion: 'advice-v1', schemaVersion: 'advice-v1', settings: { maxOutputTokens: 300 }, timeoutMs: 15000 };
 
