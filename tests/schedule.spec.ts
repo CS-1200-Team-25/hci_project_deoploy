@@ -40,7 +40,7 @@ test('participant corrects conflicts and deadline timing while fixed commitments
   await expect(page.getByText('Preparation before deadline: 240 minutes')).toBeVisible();
   await page.getByRole('button', { name: 'Complete task' }).click();
   await expect(page.getByRole('heading', { name: 'Task submitted successfully' })).toBeVisible();
-  await expect(page.getByText('Optional improvements')).toBeVisible();
+  await expect(page.getByText('Optional improvements')).toHaveCount(0);
   await page.reload();
   const session = await page.evaluate(async () => {
     const path = '/src/experiment/persistence.ts';
@@ -49,6 +49,7 @@ test('participant corrects conflicts and deadline timing while fixed commitments
   expect(session.trials[0]).toMatchObject({ task: 'schedule', outcome: 'successful', successfulCompletionMs: 75000, taskVersion: 'schedule-fixture-v1' });
   expect(session.trials[0].finalPlan.blocks.filter((block: { kind: string }) => block.kind === 'class' || block.kind === 'work')).toEqual(FIXED_COMMITMENTS);
   expect(session.trials[0].submissionAttempts).toHaveLength(4);
+  expect(session.trials[0].finalValidation.warnings).toEqual(['Meals, rest, exercise and buffers are optional; add them if helpful.']);
   expect(session.events.map((event: { eventType: string }) => event.eventType)).toEqual(expect.arrayContaining(['item_added', 'item_updated', 'item_moved', 'item_removed']));
 });
 

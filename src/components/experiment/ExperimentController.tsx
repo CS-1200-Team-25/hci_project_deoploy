@@ -288,7 +288,6 @@ export function ExperimentController() {
         <h2>{trial.outcome === 'successful' ? 'Task submitted successfully' : 'Trial ended by supervisor'}</h2>
         <p>Your final plan and outcome are recorded. Answer both questions to continue.</p>
         {trial.terminationReason && <p>Termination reason: {trial.terminationReason}</p>}
-        <ValidationFeedback result={trial.finalValidation} />
         <PostTaskSurveyForm draft={session.postTaskSurveyDrafts[trial.id] ?? {}} allowNotApplicable={!assistanceWasDisplayed(session, trial.id)}
           onChange={(draft) => commit(setPostTaskSurveyDraft(sessionRef.current!, draft))} onSubmit={() => commit(submitPostTaskSurvey(sessionRef.current!))} />
       </>}

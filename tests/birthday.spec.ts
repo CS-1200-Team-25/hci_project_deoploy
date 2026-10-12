@@ -124,7 +124,7 @@ test('failed submission continues timing and a corrected passing submission free
   await page.getByRole('button', { name: 'Complete task' }).dblclick();
   await expect(page.getByRole('heading', { name: 'Task submitted successfully' })).toBeVisible();
   await expect(page.getByLabel('Task validation notification')).toHaveCount(0);
-  await expect(page.getByText('Optional improvements')).toBeVisible();
+  await expect(page.getByText('Optional improvements')).toHaveCount(0);
   await expect(page.getByLabel('Elapsed time')).toHaveText('Elapsed01:00');
   await page.clock.runFor(30000);
   await page.reload();
@@ -143,6 +143,7 @@ test('failed submission continues timing and a corrected passing submission free
   expect(trial.submissionAttempts).toHaveLength(3);
   expect(trial.submissionAttempts[0].validation.isComplete).toBe(false);
   expect(trial.finalValidation.isComplete).toBe(true);
+  expect(trial.finalValidation.warnings).toHaveLength(1);
   expect(trial.finalPlan).toEqual(trial.taskState);
   expect(session.events.filter((event: { eventType: string }) => event.eventType === 'task_completed')).toHaveLength(1);
 });
@@ -171,7 +172,7 @@ test('a narrow screen shows coverage and party-window errors in a toast and a co
   await page.getByRole('button', { name: 'Complete task' }).click();
   await expect(page.getByRole('heading', { name: 'Task submitted successfully' })).toBeVisible();
   await expect(toast).toHaveCount(0);
-  await expect(page.getByText('Optional improvements')).toBeVisible();
+  await expect(page.getByText('Optional improvements')).toHaveCount(0);
 });
 
 test('participant adds, updates, moves and removes catalog items and reload keeps the edited plan', async ({ page }) => {

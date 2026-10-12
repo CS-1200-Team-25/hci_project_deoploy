@@ -53,10 +53,12 @@ test('all three real tasks, persisted survey drafts and final trial preference r
   await page.getByRole('button', { name: 'Add Trivia', exact: true }).click();
   await page.getByRole('button', { name: 'Complete task' }).click();
   await expect(page.getByRole('heading', { name: 'Post-task survey' })).toBeVisible();
+  await expect(page.locator('.validation-feedback')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Submit post-task survey' })).toBeDisabled();
   await page.getByLabel('Helpfulness rating').selectOption('not-applicable');
   await page.reload();
   await expect(page.getByLabel('Helpfulness rating')).toHaveValue('not-applicable');
+  await expect(page.locator('.validation-feedback')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Submit post-task survey' })).toBeDisabled();
   await page.getByLabel('Interruption rating').selectOption('not-applicable');
   await page.reload();
@@ -76,6 +78,7 @@ test('all three real tasks, persisted survey drafts and final trial preference r
   await page.getByRole('group', { name: 'Harbor tour booking 4' }).getByLabel('Start time').fill('11:00');
   await page.getByRole('button', { name: 'Complete task' }).click();
   await page.getByLabel('Helpfulness rating').selectOption('4');
+  await expect(page.locator('.validation-feedback')).toHaveCount(0);
   await page.getByLabel('Interruption rating').selectOption('2');
   await page.getByRole('button', { name: 'Submit post-task survey' }).click();
   await page.getByRole('button', { name: 'Add preparation block' }).click();
@@ -85,6 +88,7 @@ test('all three real tasks, persisted survey drafts and final trial preference r
   await preparation.getByLabel('Duration (minutes)').fill('240');
   await page.getByRole('button', { name: 'Complete task' }).click();
   await page.getByLabel('Helpfulness rating').selectOption('not-applicable');
+  await expect(page.locator('.validation-feedback')).toHaveCount(0);
   await page.getByLabel('Interruption rating').selectOption('1');
   await page.getByRole('button', { name: 'Submit post-task survey' }).click();
   await expect(page.getByRole('heading', { name: 'Final survey' })).toBeVisible();
