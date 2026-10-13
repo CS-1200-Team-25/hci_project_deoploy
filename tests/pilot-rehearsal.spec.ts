@@ -1,3 +1,4 @@
+import { openSupervisorTools } from './supervisor-tools';
 import { expect, test, type Page } from '@playwright/test';
 import { consentToSession, createSession, revealTask } from '../src/experiment/session';
 import { SESSION_STORAGE_KEY } from '../src/experiment/persistence';
@@ -70,6 +71,7 @@ for (const endSchedule of ['successful', 'unsuccessful'] as const) {
       await prep.getByLabel('Duration (minutes)').fill('240');
       await page.getByRole('button', { name: 'Complete task' }).click();
     } else {
+      await openSupervisorTools(page);
       await page.getByText('Supervisor access', { exact: true }).click();
       await page.getByLabel('Supervisor access code').fill('research-only');
       await page.getByRole('button', { name: 'Unlock supervisor controls' }).click();
@@ -82,6 +84,7 @@ for (const endSchedule of ['successful', 'unsuccessful'] as const) {
     await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible();
     await page.reload();
     await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible();
+    await openSupervisorTools(page);
     await page.getByText('Supervisor storage tools', { exact: true }).click();
     const downloading = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Download session JSON' }).click();
@@ -150,6 +153,7 @@ for (const [sequence, task, firstEdit, nextEdit] of [
     await expect(page.getByRole('button', { name: 'Complete task' })).toBeEnabled();
     await page.getByRole('button', { name: 'Complete task' }).click();
     await expect(page.getByRole('alert').filter({ hasText: 'Local saving failed' })).toBeVisible();
+    await openSupervisorTools(page);
     await page.getByText('Supervisor storage tools', { exact: true }).click();
     const downloading = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Download session JSON' }).click();

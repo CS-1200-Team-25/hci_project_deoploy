@@ -1,0 +1,37 @@
+import { expect, test } from '@playwright/test';
+
+test('supervisor drawer stays outside workspace, traps focus and closes with Escape or backdrop', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByLabel('Participant ID').fill('DRAWER');
+  await page.getByLabel('Supervisor access code').fill('research-only');
+  await page.getByRole('button', { name: 'Create session' }).click();
+  await page.getByLabel('I consent to take part in this supervised pilot').check();
+  await page.getByRole('button', { name: 'Continue to instructions' }).click();
+  await page.getByRole('button', { name: 'Reveal first task' }).click();
+  const trigger = page.getByRole('button', { name: 'Open supervisor tools' });
+  const dialog = page.getByRole('dialog', { name: 'Supervisor tools' });
+  await expect(page.getByText('Supervisor access', { exact: true })).not.toBeVisible();
+  await expect(page.getByText('Supervisor storage tools', { exact: true })).not.toBeVisible();
+  const position = await trigger.boundingBox();
+  expect(position!.x).toBeLessThan(24);
+  expect(position!.y).toBeGreaterThan(760);
+  await trigger.click();
+  await expect(dialog).toBeVisible();
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.getByRole('button', { name: 'Close supervisor tools' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await page.getByRole('button', { name: 'Complete task' }).evaluate((button: HTMLButtonElement) => button.focus());
+  expect(await page.evaluate(() => document.querySelector('dialog')!.contains(document.activeElement))).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(dialog).not.toBeVisible();
+  await expect(trigger).toBeFocused();
+  await trigger.click();
+  await page.getByRole('button', { name: 'Close supervisor tools' }).click();
+  await expect(trigger).toBeFocused();
+  await page.setViewportSize({ width: 1000, height: 800 });
+  await trigger.click();
+  await page.mouse.click(900, 400);
+  await expect(dialog).not.toBeVisible();
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+});

@@ -1,3 +1,4 @@
+import { openSupervisorTools } from './supervisor-tools';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { birthdayTask } from '../src/tasks/birthday';
@@ -70,6 +71,7 @@ test('only an unlocked supervisor can end a trial with a reason and unsuccessful
   await startBirthday(page);
   await page.getByRole('button', { name: 'Add Pizza', exact: true }).click();
   await expect(page.getByRole('button', { name: 'End unsuccessful trial' })).toHaveCount(0);
+  await openSupervisorTools(page);
   await page.getByText('Supervisor access', { exact: true }).click();
   await page.getByLabel('Supervisor access code').fill('wrong-code');
   await page.getByRole('button', { name: 'Unlock supervisor controls' }).click();
@@ -80,6 +82,7 @@ test('only an unlocked supervisor can end a trial with a reason and unsuccessful
   await expect(page.getByRole('button', { name: 'End unsuccessful trial' })).toBeDisabled();
   await page.reload();
   await expect(page.getByRole('button', { name: 'End unsuccessful trial' })).toHaveCount(0);
+  await openSupervisorTools(page);
   await page.getByText('Supervisor access', { exact: true }).click();
   await page.getByLabel('Supervisor access code').fill('research-only');
   await page.getByRole('button', { name: 'Unlock supervisor controls' }).click();
