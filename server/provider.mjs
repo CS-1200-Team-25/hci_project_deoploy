@@ -1,15 +1,14 @@
 import { createServer } from 'node:http';
 import { pathToFileURL } from 'node:url';
-import { providerAdapters, ProviderOutputError } from './adapters.mjs';
+import { geminiAdapter, ProviderOutputError } from './adapters.mjs';
 
 export function providerConfiguration(env = process.env) {
   const timeoutMs = Number(env.GENERATION_TIMEOUT_MS ?? 15000);
-  const provider = env.LLM_PROVIDER ?? 'gemini';
-  if (!Object.hasOwn(providerAdapters, provider)) throw Error('LLM_PROVIDER must name a supported provider adapter');
-  const legacyModel = provider === 'openai' ? env.OPENAI_MODEL : provider === 'gemini' ? env.GEMINI_MODEL : undefined;
-  const model = env.LLM_MODEL ?? legacyModel ?? providerAdapters[provider].defaultModel;
+  if (env.LLM_PROVIDER !== undefined && env.LLM_PROVIDER !== 'gemini') throw Error('Only Gemini is supported; remove LLM_PROVIDER or set it to gemini');
+  const provider = 'gemini';
+  const model = env.GEMINI_MODEL ?? env.LLM_MODEL ?? geminiAdapter.defaultModel;
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 120000) throw Error('GENERATION_TIMEOUT_MS must be an integer from 100 to 120000');
-  if (typeof model !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/.test(model)) throw Error('LLM_MODEL must be a valid model identifier');
+  if (typeof model !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/.test(model)) throw Error('GEMINI_MODEL must be a valid model identifier');
   return Object.freeze({ provider, model, promptVersion: 'intervention-prompt-v2', schemaVersion: 'intervention-schema-v1', settings: Object.freeze({ maxOutputTokens: 300 }), timeoutMs });
 }
 export const configuration = providerConfiguration();
@@ -36,14 +35,13 @@ function validAdvice(value, signal) {
   return keys(value, ['signalId', 'type', 'message', 'target']) && Object.keys(value).length === 4 && value.signalId === signal.id && schema.properties.type.enum.includes(value.type) && value.target === (signal.target ?? null) && string(value.message, 1000);
 }
 export function createProviderServer({ env = process.env, provider = env.LLM_PROVIDER ?? 'gemini', apiKey, fetchImpl = fetch, origin = env.APP_ORIGIN ?? 'http://localhost:5173', timeoutMs, model, baseUrl } = {}) {
-  const config = providerConfiguration({ ...env, LLM_PROVIDER: provider, ...(model !== undefined ? { LLM_MODEL: model } : {}), ...(timeoutMs !== undefined ? { GENERATION_TIMEOUT_MS: String(timeoutMs) } : {}) });
-  const adapter = providerAdapters[config.provider];
+  const config = providerConfiguration({ ...env, LLM_PROVIDER: provider, ...(model !== undefined ? { GEMINI_MODEL: model } : {}), ...(timeoutMs !== undefined ? { GENERATION_TIMEOUT_MS: String(timeoutMs) } : {}) });
+  const adapter = geminiAdapter;
   apiKey ??= adapter.credential(env);
-  const endpointValue = baseUrl ?? env.LLM_BASE_URL ?? adapter.defaultBaseUrl;
-  if (!endpointValue) throw Error('LLM_BASE_URL is required for this provider');
+  const endpointValue = baseUrl ?? env.GEMINI_BASE_URL ?? env.LLM_BASE_URL ?? adapter.defaultBaseUrl;
   const endpoint = new URL(endpointValue);
   if (!['http:', 'https:'].includes(endpoint.protocol) || endpoint.username || endpoint.password || endpoint.search || endpoint.hash
-    || (endpoint.protocol === 'http:' && !['localhost', '127.0.0.1', '[::1]'].includes(endpoint.hostname))) throw Error('LLM_BASE_URL must use HTTPS or loopback HTTP, without credentials, query or fragment');
+    || (endpoint.protocol === 'http:' && !['localhost', '127.0.0.1', '[::1]'].includes(endpoint.hostname))) throw Error('GEMINI_BASE_URL must use HTTPS or loopback HTTP, without credentials, query or fragment');
   baseUrl = endpoint.href.replace(/\/$/, '');
   let active = 0;
   let windowStart = Date.now();
@@ -64,7 +62,7 @@ export function createProviderServer({ env = process.env, provider = env.LLM_PRO
     let input;
     try { input = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { return send(400, { error: 'invalid-json' }); }
     if (!validRequest(input)) return send(400, { error: 'invalid-request' });
-    if (!apiKey && !(config.provider === 'openai-compatible' && ['localhost', '127.0.0.1', '[::1]'].includes(endpoint.hostname))) return send(503, { error: 'provider-unconfigured' });
+    if (!apiKey) return send(503, { error: 'provider-unconfigured' });
     if (Date.now() - windowStart >= 60000) { windowStart = Date.now(); requests = 0; }
     if (active >= 2 || requests >= 20) return send(429, { error: 'provider-busy' });
     active++; requests++;

@@ -1,39 +1,30 @@
-# Local intervention provider
+# Local Gemini intervention provider
 
-Requires Node 22.12+. Copy .env.example to .env, set GEMINI_API_KEY, then run
-npm run provider and npm run dev in separate terminals. The default is Gemini's
-native API with gemini-2.5-flash-lite; LLM_MODEL selects the model. Open
-http://localhost:5173. APP_ORIGIN must match the browser origin. Vite proxies
-/api to 127.0.0.1:8787 in dev and preview; production still needs the service.
-Keep .env private and never prefix credentials with VITE_.
+Requires Node 22.12+. Copy .env.example to .env and set GEMINI_API_KEY. Run
+npm run provider and npm run dev in separate terminals, then open
+http://localhost:5173. Restart the provider after changing .env and reload the
+browser to fetch the updated configuration. APP_ORIGIN must match the browser
+origin. Vite proxies /api to 127.0.0.1:8787 in dev and preview; production still
+needs the service. Keep .env private and never prefix credentials with VITE_.
 
-## Provider and model configuration
+## Gemini configuration
 
-| LLM_PROVIDER | API | Credential | Default model |
-| --- | --- | --- | --- |
-| gemini (default) | Google generateContent | GEMINI_API_KEY or GOOGLE_API_KEY | gemini-2.5-flash-lite |
-| openai | OpenAI Responses | OPENAI_API_KEY | gpt-4.1-mini-2025-04-14 |
-| openai-compatible | Chat completions | LLM_API_KEY | Explicit LLM_MODEL required |
+The pilot uses Gemini's native generateContent API only. The default model is
+gemini-3.5-flash-lite; GEMINI_MODEL selects a different available Gemini model.
+The request uses systemInstruction, contents and a JSON-schema responseFormat.
+The server validates the returned signal ID, target and advice before exposure.
+OpenAI Responses and chat-completions-compatible services are no longer supported.
 
-LLM_API_KEY overrides provider-specific keys. LLM_MODEL overrides legacy
-GEMINI_MODEL / OPENAI_MODEL. LLM_BASE_URL overrides the server's API root;
-include its version/path prefix, without the operation. Built-in providers have
-default roots; compatible endpoints require an explicit root. URLs must use
-HTTPS, or loopback HTTP, without embedded credentials, queries or fragments.
-Redirects are rejected. A local compatible service example:
+GEMINI_API_KEY is primary, with GOOGLE_API_KEY as a fallback. Existing LLM_API_KEY,
+LLM_MODEL and LLM_BASE_URL remain migration aliases; Gemini-specific settings take
+precedence. LLM_PROVIDER may be omitted or set to gemini; other values fail at
+startup. There is no runtime provider selection or automatic fallback.
 
-    LLM_PROVIDER=openai-compatible
-    LLM_MODEL=your-installed-model
-    LLM_BASE_URL=http://127.0.0.1:11434/v1
-
-Loopback compatible services can run without a key; remote services require
-LLM_API_KEY. The model/service must support strict JSON-schema response_format,
-system/user messages and max_tokens. Compatibility varies: unsupported settings
-fail explicitly, without fallback advice or automatic provider switching.
-Arbitrary APIs are not interchangeable. Add another protocol in
-server/adapters.mjs with its default model/root, credential resolver, build and
-parse functions. The parser returns {text, id?, model?} or ProviderOutputError.
-Shared HTTP protections, validation, timeout and browser behavior then apply.
+The default API root is https://generativelanguage.googleapis.com/v1beta.
+GEMINI_BASE_URL optionally overrides that root for a Gemini-protocol endpoint.
+Include the API prefix without /models or :generateContent. URLs must use HTTPS,
+or loopback HTTP, without embedded credentials, queries or fragments. Redirects
+are rejected. A key is required even for a loopback endpoint.
 
 GENERATION_TIMEOUT_MS defaults to 15000 (integer100-120000). Freeze provider,
 model, prompt/schema and settings before a pilot; active conditions share them.
@@ -55,7 +46,7 @@ retention terms still apply; no zero-retention claim is made.
 GET /api/interventions/config reports public configuration. POST
 /api/interventions accepts session/trial/task/selection/request IDs, revision,
 signal and bounded JSON context. Unknown top-level fields (including condition)
-are rejected. Adapters normalize output; shared validation checks signal/target
+are rejected. The Gemini parser normalizes output; shared validation checks signal/target
 identity, type and bounded nonempty message. Refusal, truncation, malformed output
 and provider errors yield sanitized failures, never fabricated advice.
 
@@ -104,3 +95,28 @@ latency require this manual run; mocked tests cannot prove them.
 References: Google's [structured-output guide](https://ai.google.dev/gemini-api/docs/generate-content/structured-output),
 [generateContent reference](https://ai.google.dev/api/generate-content), and
 [chat-completions compatibility guide](https://ai.google.dev/gemini-api/docs/openai).
+
+## Diagnosing timeouts
+
+First request GET http://127.0.0.1:8787/api/interventions/config and confirm the
+model and timeout match .env. This checks local availability, not upstream access.
+A generation HTTP 504 with provider-timeout means the request exceeded the configured
+budget. Raising the timeout allows a longer wait; it does not reduce latency.
+Failures remain in the supervisor warning even after a later successful request.
+
+To isolate Gemini from the local service, import this cURL into Postman and set
+GEMINI_API_KEY and GEMINI_MODEL as private Postman environment variables:
+
+```bash
+curl --request POST 'https://generativelanguage.googleapis.com/v1beta/models/{{GEMINI_MODEL}}:generateContent' \
+  --header 'x-goog-api-key: {{GEMINI_API_KEY}}' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{"contents":[{"parts":[{"text":"Reply with exactly the word OK."}]}],"generationConfig":{"maxOutputTokens":20}}'
+```
+
+Compare the direct request's elapsed time with the local request. If the minimal
+direct request is also slow, simplifying the app prompt does not explain that
+latency. Check model availability and provider service health, and compare an
+available alternative Gemini model with the same key. Do not share credentials
+or authorization headers when reporting results. Controlled tests verify request
+format and lifecycle behavior; they cannot guarantee live Gemini latency.

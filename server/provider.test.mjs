@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { geminiAdapter } from './adapters.mjs';
 import { createProviderServer, configuration, providerConfiguration, validRequest } from './provider.mjs';
 const request = { sessionId: 's', trialId: 't', taskId: 'birthday', stateRevision: 1, selectionId: 'x', requestId: 'request-1', signal: { id: 'food', type: 'coverage', severity: .85, message: 'Add food' }, context: { taskId: 'birthday', summary: { foodServings: 0 } } };
 async function fixture(options, run) {
@@ -18,27 +19,9 @@ test('rejects cross-origin and unknown fields before provider invocation', async
   assert.equal((await post({ ...request, condition: 'high' })).status, 400);
   assert.equal((await post({ ...request, context: { taskId: 'weekend', summary: 'x' } })).status, 400);
 }));
-test('strict Responses request omits session identity; output identity is validated', async () => {
-  let mismatch = false;
-  await fixture({ provider: 'openai', apiKey: 'test', fetchImpl: async (url, options) => {
-    assert.equal(url, 'https://api.openai.com/v1/responses');
-    const body = JSON.parse(options.body);
-    assert.equal(body.text.format.strict, true);
-    assert.equal(body.store, false);
-    assert.equal(JSON.parse(body.input).sessionId, undefined);
-    return Response.json({ status: 'completed', id: 'resp_test', output: [{ content: [{ type: 'output_text', text: JSON.stringify({ signalId: mismatch ? 'other' : 'food', type: 'suggestion', message: 'Choose food for twelve guests.', target: null }) }] }] });
-  } }, async ({ post }) => {
-    const response = await post();
-    assert.equal(response.status, 200);
-    assert.equal((await response.json()).providerRequestId, 'resp_test');
-    mismatch = true;
-    assert.equal((await post()).status, 502);
-  });
-});
-
 test('Gemini is the default and native structured advice uses server-only credentials', async () => {
   await fixture({ apiKey: 'gemini-secret', fetchImpl: async (url, options) => {
-    assert.equal(url, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent');
+    assert.equal(url, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent');
     assert.equal(options.headers['x-goog-api-key'], 'gemini-secret');
     const body = JSON.parse(options.body);
     assert.equal(body.generationConfig.responseFormat.text.mimeType, 'APPLICATION_JSON');
@@ -46,7 +29,7 @@ test('Gemini is the default and native structured advice uses server-only creden
     assert.equal(body.generationConfig.responseFormat.text.schema.properties.target.type, 'null');
     assert.deepEqual(body.generationConfig.responseFormat.text.schema.properties.signalId.enum, ['food']);
     assert.equal(JSON.parse(body.contents[0].parts[0].text).sessionId, undefined);
-    return Response.json({ responseId: 'gemini-response', modelVersion: 'gemini-2.5-flash-lite-001', candidates: [{ finishReason: 'STOP', content: { parts: [{ text: JSON.stringify({ signalId: 'food', type: 'suggestion', message: 'Choose enough food for twelve guests.', target: null }) }] } }] });
+    return Response.json({ responseId: 'gemini-response', modelVersion: 'gemini-3.5-flash-lite-001', candidates: [{ finishReason: 'STOP', content: { parts: [{ text: JSON.stringify({ signalId: 'food', type: 'suggestion', message: 'Choose enough food for twelve guests.', target: null }) }] } }] });
   } }, async ({ url, post }) => {
     const config = await (await fetch(`${url}/api/interventions/config`)).json();
     assert.equal(config.provider, 'gemini');
@@ -57,27 +40,8 @@ test('Gemini is the default and native structured advice uses server-only creden
   });
 });
 
-test('compatible endpoints accept custom model IDs and normalize chat-completion advice', async () => {
-  await fixture({ provider: 'openai-compatible', model: 'org/model:latest', baseUrl: 'http://127.0.0.1:11434/v1', env: {}, fetchImpl: async (url, options) => {
-    assert.equal(url, 'http://127.0.0.1:11434/v1/chat/completions');
-    assert.equal(options.headers.Authorization, undefined);
-    const body = JSON.parse(options.body);
-    assert.equal(body.model, 'org/model:latest');
-    assert.equal(body.response_format.json_schema.strict, true);
-    assert.equal(body.max_tokens, 300);
-    assert.equal(JSON.parse(body.messages[1].content).trialId, undefined);
-    return Response.json({ id: 'local-response', model: 'org/model:latest', choices: [{ finish_reason: 'stop', message: { content: JSON.stringify({ signalId: 'food', type: 'suggestion', message: 'Add food for the guests.', target: null }) } }] });
-  } }, async ({ post }) => {
-    const response = await post();
-    assert.equal(response.status, 200);
-    assert.equal((await response.json()).provider, 'openai-compatible');
-  });
-});
-
 for (const [provider, truncated, refused, invalid] of [
   ['gemini', { candidates: [{ finishReason: 'MAX_TOKENS' }] }, { promptFeedback: { blockReason: 'SAFETY' } }, { candidates: [{ finishReason: 'STOP', content: { parts: [{ text: '{"signalId":"wrong","type":"suggestion","message":"Bad identity","target":null}' }] } }] }],
-  ['openai', { status: 'incomplete' }, { status: 'completed', output: [{ content: [{ type: 'refusal' }] }] }, { status: 'completed', output: [{ content: [{ type: 'output_text', text: '{"signalId":"wrong","type":"suggestion","message":"Bad identity","target":null}' }] }] }],
-  ['openai-compatible', { choices: [{ finish_reason: 'length' }] }, { choices: [{ finish_reason: 'content_filter' }] }, { choices: [{ finish_reason: 'stop', message: { content: '{"signalId":"wrong","type":"suggestion","message":"Bad identity","target":null}' } }] }],
 ]) {
   test(`${provider} refuses incomplete, blocked and mismatched advice without exposure`, async () => {
     let output = truncated;
@@ -128,12 +92,14 @@ test('concurrency guard rejects a third live call and releases slots on timeout'
 test('configured model and timeout are validated and exposed accurately', async () => {
   for (const timeout of ['99', '120001', 'NaN', '1.5']) assert.throws(() => providerConfiguration({ GENERATION_TIMEOUT_MS: timeout }));
   assert.throws(() => providerConfiguration({ LLM_MODEL: 'bad model' }));
-  assert.throws(() => providerConfiguration({ LLM_PROVIDER: 'openai-compatible' }), /LLM_MODEL/);
-  assert.throws(() => providerConfiguration({ LLM_PROVIDER: 'openai-compatible', GEMINI_MODEL: 'gemini-2.5-flash' }), /LLM_MODEL/);
+  assert.throws(() => providerConfiguration({ LLM_PROVIDER: 'openai-compatible' }), /Only Gemini/);
+  assert.throws(() => providerConfiguration({ LLM_PROVIDER: 'openai-compatible', GEMINI_MODEL: 'gemini-2.5-flash' }), /Only Gemini/);
   assert.throws(() => providerConfiguration({ LLM_PROVIDER: 'unknown' }), /LLM_PROVIDER/);
-  assert.throws(() => createProviderServer({ provider: 'openai-compatible', model: 'local-model', env: {} }), /LLM_BASE_URL/);
+  assert.throws(() => createProviderServer({ provider: 'openai', env: {} }), /Only Gemini/);
+  assert.equal(providerConfiguration({ GEMINI_MODEL: 'gemini-primary', LLM_MODEL: 'legacy-model' }).model, 'gemini-primary');
+  assert.equal(providerConfiguration({ LLM_MODEL: 'legacy-model' }).model, 'legacy-model');
   for (const baseUrl of ['http://remote.example/v1', 'https://user:password@example.com/v1', 'https://example.com/v1?key=secret']) {
-    assert.throws(() => createProviderServer({ baseUrl }), /LLM_BASE_URL/);
+    assert.throws(() => createProviderServer({ baseUrl }), /GEMINI_BASE_URL/);
   }
   await fixture({ model: 'custom-snapshot', timeoutMs: 1234 }, async ({ url }) => {
     const config = await (await fetch(`${url}/api/interventions/config`)).json();
@@ -167,3 +133,14 @@ test('browser disconnect cancels the upstream request', async () => {
     await aborted;
   });
 });
+
+test('Gemini credential precedence preserves legacy aliases without leaking keys', () => {
+  assert.equal(geminiAdapter.credential({ GEMINI_API_KEY: 'primary', GOOGLE_API_KEY: 'google', LLM_API_KEY: 'legacy' }), 'primary');
+  assert.equal(geminiAdapter.credential({ GOOGLE_API_KEY: 'google', LLM_API_KEY: 'legacy' }), 'google');
+  assert.equal(geminiAdapter.credential({ LLM_API_KEY: 'legacy' }), 'legacy');
+  assert.equal(geminiAdapter.credential({ OPENAI_API_KEY: 'unsupported' }), undefined);
+});
+
+test('loopback Gemini endpoints still require a key', async () => fixture({ env: {}, baseUrl: 'http://127.0.0.1:9999/v1beta', fetchImpl: () => { throw Error('must not call'); } }, async ({ post }) => {
+  assert.equal((await post()).status, 503);
+}));
