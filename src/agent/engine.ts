@@ -3,7 +3,7 @@ import { PILOT_CONFIGURATION } from '../experiment/conditions';
 
 export interface DecisionContext {
   now: number;
-  trialStartedAt: number;
+  issueStartedAt: Record<string, number>;
   displays: { signalId: string; timestamp: number }[];
   inFlightSignalIds: string[];
   reservedSignalIds: string[];
@@ -12,9 +12,9 @@ export interface DecisionContext {
   displayCooldowns?: { globalMs: number; signalMs: number };
 }
 
-/** Bounded recency uses actual displays, never selections or reservations. */
+/** Bounded pressure from how long one issue has continuously remained unresolved. */
 export function recencyBonus(seconds: number): number {
-  return seconds >= 120 ? 0.2 : seconds >= 60 ? 0.1 : seconds >= 30 ? 0.05 : 0;
+  return seconds >= 180 ? 0.6 : seconds >= 120 ? 0.45 : seconds >= 60 ? 0.3 : seconds >= 30 ? 0.15 : 0;
 }
 
 export function evaluateInterventions(
@@ -22,14 +22,15 @@ export function evaluateInterventions(
   policy: { proactive: boolean; threshold: number | null },
   context: DecisionContext,
 ) {
-  const lastDisplay = Math.max(context.trialStartedAt, ...context.displays.map((display) => display.timestamp));
-  const bonus = recencyBonus(Math.max(0, context.now - lastDisplay) / 1000);
   const cooldowns = context.displayCooldowns ?? PILOT_CONFIGURATION.displayCooldowns;
   const evaluations = signals.map((signal) => {
     if (!Number.isFinite(signal.severity) || signal.severity < 0 || signal.severity > 1) {
       throw new Error('Signal severity must be normalized.');
     }
-    const finalScore = Math.min(1, signal.severity + bonus);
+    const issueStartedAt = context.issueStartedAt[signal.id] ?? context.now;
+    const unresolvedMs = Math.max(0, context.now - issueStartedAt);
+    const bonus = recencyBonus(unresolvedMs / 1000);
+    const finalScore = Math.min(1, signal.severity * 0.5 + bonus);
     let exclusionReason: string | null = null;
     if (!policy.proactive) exclusionReason = 'baseline';
     else if (context.hasUnansweredIntervention) exclusionReason = 'unanswered-intervention';
@@ -39,7 +40,8 @@ export function evaluateInterventions(
     else if (context.displays.some((display) => context.now - display.timestamp < cooldowns.globalMs)) exclusionReason = 'global-cooldown';
     else if (context.displays.some((display) => display.signalId === signal.id && context.now - display.timestamp < cooldowns.signalMs)) exclusionReason = 'signal-cooldown';
     else if (policy.threshold === null || finalScore < policy.threshold) exclusionReason = 'below-threshold';
-    return { signalId: signal.id, signalType: signal.type, rawSeverity: signal.severity, recencyBonus: bonus, finalScore,
+    return { signalId: signal.id, signalType: signal.type, issueStartedAt, unresolvedMs,
+      rawSeverity: signal.severity, recencyBonus: bonus, finalScore,
       threshold: policy.threshold, proactive: policy.proactive, triggered: false, exclusionReason };
   });
   const eligible = evaluations.filter((evaluation) => evaluation.exclusionReason === null)

@@ -39,7 +39,7 @@ test('advice context describes available catalog options and executable edits in
   expect(schedule.constraints).toMatchObject({ preparationMinutes: 240, deadline: { day: 4, minute: 1020 } });
 });
 
-test('every provider receives the action-and-reason prompt and unmodified real task options', async () => {
+test('Gemini receives the action-and-reason prompt and unmodified real task options', async () => {
   const scheduleState = { blocks: [...scheduleTask.initialState.blocks,
     { id: 'prep-a', kind: 'preparation' as const, day: 0, startMinute: 660, durationMinutes: 60 },
     { id: 'prep-b', kind: 'preparation' as const, day: 0, startMinute: 690, durationMinutes: 60 },
@@ -50,61 +50,52 @@ test('every provider receives the action-and-reason prompt and unmodified real t
     { signal: scheduleTask.evaluateSignals(scheduleState).find(signal => signal.id === 'schedule:overlap:prep-a:prep-b')!, context: scheduleTask.getAgentContext(scheduleState) },
   ];
   expect(scheduleState.blocks[5]).toEqual({ id: 'prep-a', kind: 'preparation', day: 0, startMinute: 660, durationMinutes: 60 });
-  for (const provider of ['gemini', 'openai', 'openai-compatible']) {
-    for (const input of inputs) {
-      let calls = 0;
-      const observed: { prompt: string; input: unknown; schema: { additionalProperties: boolean; properties: { signalId: { enum: string[] } } }; tokens: number }[] = [];
-      const fetchImpl: typeof fetch = async (_url, options) => {
-        calls++;
-        const body = JSON.parse(options!.body as string);
-        const prompt = provider === 'gemini' ? body.systemInstruction.parts[0].text
-          : provider === 'openai' ? body.instructions : body.messages[0].content;
-        const received = JSON.parse(provider === 'gemini' ? body.contents[0].parts[0].text
-          : provider === 'openai' ? body.input : body.messages[1].content);
-        const schema = provider === 'gemini' ? body.generationConfig.responseFormat.text.schema
-          : provider === 'openai' ? body.text.format.schema : body.response_format.json_schema.schema;
-        observed.push({ prompt, input: received, schema, tokens: provider === 'gemini' ? body.generationConfig.maxOutputTokens
-          : provider === 'openai' ? body.max_output_tokens : body.max_tokens });
-        const text = JSON.stringify({ signalId: input.signal.id, type: 'suggestion', message: 'A provider response.', target: input.signal.target ?? null });
-        return Response.json(provider === 'gemini'
-          ? { candidates: [{ finishReason: 'STOP', content: { parts: [{ text }] } }] }
-          : provider === 'openai' ? { status: 'completed', output: [{ content: [{ type: 'output_text', text }] }] }
-            : { choices: [{ finish_reason: 'stop', message: { content: text } }] });
-      };
-      const server = createProviderServer({ env: {}, provider, model: 'test-model', apiKey: 'test', baseUrl: 'https://provider.example/v1', fetchImpl });
-      await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
-      try {
-        const address = server.address() as { port: number };
-        const response = await fetch(`http://127.0.0.1:${address.port}/api/interventions`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:5173' },
-          body: JSON.stringify({ ...input, taskId: input.context.taskId, sessionId: 's', trialId: 't', selectionId: 'sel', requestId: 'req', stateRevision: 0 }),
-        });
-        expect(response.status).toBe(200);
-        expect((await response.json()).promptVersion).toBe('intervention-prompt-v2');
-        expect(calls).toBe(1);
-        expect(observed[0].input).toEqual(input);
-        if (input.context.taskId === 'schedule') {
-          const received = observed[0].input as { context: { summary: Record<string, unknown> } };
-          expect(received.context.summary.plan).toMatchObject({ blocks: expect.arrayContaining([
-            expect.objectContaining({ id: 'prep-a', day: 0, startMinute: 660, weekday: 'Monday', startTime: '11:00', endTime: '12:00', description: 'Monday preparation, 11:00–12:00', editable: true }),
-            expect.objectContaining({ id: 'prep-b', description: 'Monday preparation, 11:30–12:30', editable: true }),
-            expect.objectContaining({ id: 'class-mon', description: 'Monday class, 09:00–11:00', editable: false }),
-          ]) });
-          expect(received.context.summary.constraints).toMatchObject({ dailyWindow: 'Monday–Friday 08:00–20:00', deadline: { label: 'Friday 17:00' } });
-          expect(JSON.stringify(received.context.summary).length).toBeLessThanOrEqual(12000);
-        }
-        expect(observed[0].prompt).toMatch(/one specific.*action/i);
-        expect(observed[0].prompt).toMatch(/brief reason/i);
-        expect(observed[0].prompt).toMatch(/UI label/i);
-        expect(observed[0].prompt).toMatch(/do not.*restate/i);
-        expect(observed[0].prompt).toMatch(/fixed commitments/i);
-        expect(observed[0].prompt).toMatch(/examples.*illustrative/i);
-        expect(observed[0].schema.additionalProperties).toBe(false);
-        expect(observed[0].schema.properties.signalId.enum).toEqual([input.signal.id]);
-        expect(observed[0].tokens).toBe(300);
-      } finally {
-        await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  for (const input of inputs) {
+    let calls = 0;
+    const observed: { prompt: string; input: unknown; schema: { additionalProperties: boolean; properties: { signalId: { enum: string[] } } }; tokens: number }[] = [];
+    const fetchImpl: typeof fetch = async (_url, options) => {
+      calls++;
+      const body = JSON.parse(options!.body as string);
+      const prompt = body.systemInstruction.parts[0].text;
+      const received = JSON.parse(body.contents[0].parts[0].text);
+      const schema = body.generationConfig.responseFormat.text.schema;
+      observed.push({ prompt, input: received, schema, tokens: body.generationConfig.maxOutputTokens });
+      const text = JSON.stringify({ signalId: input.signal.id, type: 'suggestion', message: 'A provider response.', target: input.signal.target ?? null });
+      return Response.json({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text }] } }] });
+    };
+    const server = createProviderServer({ env: {}, model: 'test-model', apiKey: 'test', baseUrl: 'https://provider.example/v1', fetchImpl });
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    try {
+      const address = server.address() as { port: number };
+      const response = await fetch(`http://127.0.0.1:${address.port}/api/interventions`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:5173' },
+        body: JSON.stringify({ ...input, taskId: input.context.taskId, sessionId: 's', trialId: 't', selectionId: 'sel', requestId: 'req', stateRevision: 0 }),
+      });
+      expect(response.status).toBe(200);
+      expect((await response.json()).promptVersion).toBe('intervention-prompt-v2');
+      expect(calls).toBe(1);
+      expect(observed[0].input).toEqual(input);
+      if (input.context.taskId === 'schedule') {
+        const received = observed[0].input as { context: { summary: Record<string, unknown> } };
+        expect(received.context.summary.plan).toMatchObject({ blocks: expect.arrayContaining([
+          expect.objectContaining({ id: 'prep-a', day: 0, startMinute: 660, weekday: 'Monday', startTime: '11:00', endTime: '12:00', description: 'Monday preparation, 11:00–12:00', editable: true }),
+          expect.objectContaining({ id: 'prep-b', description: 'Monday preparation, 11:30–12:30', editable: true }),
+          expect.objectContaining({ id: 'class-mon', description: 'Monday class, 09:00–11:00', editable: false }),
+        ]) });
+        expect(received.context.summary.constraints).toMatchObject({ dailyWindow: 'Monday–Friday 08:00–20:00', deadline: { label: 'Friday 17:00' } });
+        expect(JSON.stringify(received.context.summary).length).toBeLessThanOrEqual(12000);
       }
+      expect(observed[0].prompt).toMatch(/one specific.*action/i);
+      expect(observed[0].prompt).toMatch(/brief reason/i);
+      expect(observed[0].prompt).toMatch(/UI label/i);
+      expect(observed[0].prompt).toMatch(/do not.*restate/i);
+      expect(observed[0].prompt).toMatch(/fixed commitments/i);
+      expect(observed[0].prompt).toMatch(/examples.*illustrative/i);
+      expect(observed[0].schema.additionalProperties).toBe(false);
+      expect(observed[0].schema.properties.signalId.enum).toEqual([input.signal.id]);
+      expect(observed[0].tokens).toBe(300);
+    } finally {
+      await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
     }
   }
 });

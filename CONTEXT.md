@@ -113,14 +113,24 @@ item/pair IDs. A valid activity schedule's largest gap of at least90 minutes
 scores .35 × gap/180 (optional efficiency). All scores clamp to[0,1]. Stable
 category IDs remain unchanged across revisions; pair IDs sort item IDs.
 
-Policy version2 disables baseline explicitly; low/high thresholds are .75/.4.
+Policy version4 disables baseline explicitly; low/high thresholds are .75/.4.
 Meaningful committed edits evaluate across all tasks. Visible active tasks also
 evaluate after30 seconds without an evaluation, using the same policy and
 generation path without changing plan revisions. Baseline, pending requests and
 reserved selections skip idle checks. Mount/reload waits a fresh30 seconds;
 hidden tabs skip checks. Reveal, unchanged edits and reload do not immediately
-evaluate or replay requests. Recency uses the last actual display, or trial start:0 below30 seconds,
-.05 at30, .1 at60 and .2 at120, then remains bounded. Final score caps at1.
+evaluate or replay requests. Recency uses each stable issue ID's continuous unresolved
+age:0 below30 seconds, .15 at30, .30 at60, .45 at120 and .60 at180, then remains bounded.
+Final score is min(1, raw severity * .5 + time bonus), reducing initial severity
+weight and letting unresolved age drive escalation.
+Initial issues start at task reveal; new issues start on the committed edit that
+introduces them. An issue disappearing from the evaluator clears its timer; if
+it returns, its timer starts at zero. Severity changes for the same unresolved
+ID keep its timer. Unrelated edits, selections and advice displays do not reset
+issue timers. Persisted per-trial `issueStartedAt` maps retain only current
+signals and survive reload/hidden tabs. Logs and score previews include each
+issue's start time and unresolved milliseconds; diagnostics show unresolved
+seconds. Final score caps at1.
 Actual displays impose30-second global and60-second per-signal cooldowns.
 Resolved, in-flight, reserved and cooling candidates are excluded before
 ranking by score then stable ID; at most one candidate is selected per edit.
@@ -132,9 +142,11 @@ reservation without replay. Reservations are distinct from real provider
 requests and actual display history. Future generation owns reservation release
 on failure/completion/revalidation and records exposure only when advice is
 shown. Selected signals from all three tasks use a loopback server to request structured
-advice through a provider-neutral server adapter, defaulting to Google Gemini.
-Native Gemini, OpenAI Responses and configurable chat-completions-compatible
-services are supported; other protocols require a server adapter. Baseline makes
+advice through a Gemini-only server integration using the native generateContent API.
+Gemini-specific configuration is primary; existing LLM_* settings remain migration
+aliases. Gemini 3 Flash-Lite requests send and retain the minimal thinking level instead of
+a rejected zero budget; other configured models retain the zero budget. Historical
+records remain readable. Minimal does not guarantee disabled thinking. OpenAI and chat-completions-compatible services are no longer supported. Baseline makes
 no generation requests. Provider identity, model, prompt/schema,
 output limit and finite timeout are shared across active conditions and recorded
 with every request; condition is never sent to the provider. The provider key
@@ -144,7 +156,9 @@ Generation permits one pending request per trial. Every meaningful edit cancels
 its prior revision; completion, termination and reload also end pending requests.
 Late responses cannot display. Responses are validated against selection and
 configuration, then current revision, unresolved signal and display cooldowns
-are rechecked. Failures release reservations and log explicit outcomes without
+are rechecked. Failures include bounded diagnostic details (upstream status/message, failure stage,
+elapsed time and recognized transport causes), with the configured key and URLs
+redacted. Participant warnings remain generic. Failures release reservations and log explicit outcomes without
 fallback advice. Actual display alone updates cooldowns and survey eligibility.
 Selections, requests, responses and actual shown text are separate retained
 records. Reload restores shown history without creating another exposure or
@@ -172,7 +186,7 @@ cannot confirm that a file was saved. Failure events flag compromised retention;
 Supervisor storage tools offer downloads throughout the participant flow.
 
 
-All-task signal configuration `pilot-4` / `planning-signals-v2` keeps the
+All-task signal configuration `pilot-6` / `planning-signals-v2` keeps the
 birthday rules above and adds condition-independent weekend and schedule
 signals. The evaluator never changes the validator or reads condition metadata.
 Generation context includes the current plan, fixed constraints and applicable

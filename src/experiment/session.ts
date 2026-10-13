@@ -65,7 +65,10 @@ export function startAssignedTask(session: ExperimentSession, now = Date.now(), 
     ...session,
     phase: 'task',
     trials: session.trials.map((trial, index) => index === session.currentTrialIndex
-      ? { ...trial, status: 'active', startedAt: now, ...(definition ? { taskVersion: definition.version, taskState: structuredClone(definition.initialState) } : {}) }
+      ? { ...trial, status: 'active', startedAt: now, ...(definition ? {
+        taskVersion: definition.version, taskState: structuredClone(definition.initialState),
+        issueStartedAt: Object.fromEntries(definition.evaluateSignals(definition.initialState).map(signal => [signal.id, now])),
+      } : {}) }
       : trial),
   }, 'task_started', { scenarioVersion: session.configuration.scenarioVersion }, now);
 }
@@ -93,6 +96,9 @@ export function updateTaskState(session: ExperimentSession, taskState: unknown, 
     }, now);
   }
   const currentSignals = definition.evaluateSignals(taskState);
+  const issueStartedAt = Object.fromEntries(currentSignals.map(signal => [signal.id, trial.issueStartedAt?.[signal.id] ?? now]));
+  next = { ...next, trials: next.trials.map((candidate, index) => index === next.currentTrialIndex
+    ? { ...candidate, issueStartedAt } : candidate) };
   const activeIds = new Set(currentSignals.map(signal => signal.id));
   for (const signal of definition.evaluateSignals(trial.taskState)) {
     if (!activeIds.has(signal.id)) next = recordEvent(next, 'signal_resolved', {

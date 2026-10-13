@@ -62,6 +62,14 @@ button:focus-visible, input:focus-visible { outline: 3px solid #6e9edc; outline-
 .supervisor-drawer-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .supervisor-drawer p { margin-top: 16px; }
 .supervisor-drawer input, .supervisor-drawer textarea { min-width: 0; width: 100%; }
+.score-toggle-setting { margin-top: 24px; padding: 16px; border: 1px solid #dfe4ec; border-radius: 12px; background: #f5f7fa; }
+.score-toggle-label { display: flex; align-items: center; justify-content: space-between; gap: 16px; font-weight: 600; cursor: pointer; }
+.score-toggle-label span { min-width: 0; }
+.supervisor-drawer .score-toggle-label input { appearance: none; flex: 0 0 40px; width: 40px; height: 24px; padding: 2px; margin: 0; border: 1px solid #7b8ba4; border-radius: 999px; background: #7b8ba4; cursor: pointer; }
+.score-toggle-label input::before { content: ''; display: block; width: 18px; height: 18px; border-radius: 50%; background: white; transform: translateX(0); }
+.score-toggle-label input:checked { background: #334e76; border-color: #334e76; }
+.score-toggle-label input:checked::before { transform: translateX(16px); }
+.supervisor-drawer .score-toggle-setting p { margin-top: 10px; color: #606b7e; font-size: 0.8rem; line-height: 1.5; }
 .issue-score-list { list-style: none; padding: 0; }
 .issue-score-list li { margin-top: 16px; padding: 12px; border: 1px solid #dfe4ec; border-radius: 8px; overflow-wrap: anywhere; }
 .issue-score-list dl { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; font-size: .85rem; }

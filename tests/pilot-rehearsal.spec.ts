@@ -40,6 +40,7 @@ for (const endSchedule of ['successful', 'unsuccessful'] as const) {
     expect(requests).toHaveLength(0);
     await survey(page);
     await page.getByLabel('Saturday-night lodging').selectOption('guesthouse');
+    await page.clock.fastForward(120000);
     await expect(page.getByText('Review weekend constraints.', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Dismiss', exact: true }).click();
     await page.getByLabel('Transport option').selectOption('transit-pass');
@@ -61,6 +62,7 @@ for (const endSchedule of ['successful', 'unsuccessful'] as const) {
     await page.getByRole('button', { name: 'Complete task' }).click();
     await survey(page, true);
     await page.getByRole('button', { name: 'Add preparation block' }).click();
+    await page.clock.fastForward(30000);
     await expect(page.getByText('Review schedule constraints.', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Acknowledge' }).click();
     await page.getByRole('group', { name: 'preparation block 1' }).getByLabel('Duration (minutes)').fill('90');
@@ -94,8 +96,8 @@ for (const endSchedule of ['successful', 'unsuccessful'] as const) {
     expect(session.trials.map((trial: any) => [trial.task, trial.condition, trial.outcome])).toEqual([
       ['birthday', 'baseline', 'successful'], ['weekend', 'low', 'successful'], ['schedule', 'high', endSchedule],
     ]);
-    expect(session.trials.map((trial: any) => trial.elapsedMs)).toEqual([10000, 10000, 10000]);
-    expect(session.trials[2].successfulCompletionMs ?? null).toBe(endSchedule === 'successful' ? 10000 : null);
+    expect(session.trials.map((trial: any) => trial.elapsedMs)).toEqual([10000, 130000, 40000]);
+    expect(session.trials[2].successfulCompletionMs ?? null).toBe(endSchedule === 'successful' ? 40000 : null);
     expect(exported.trialMetrics.map((trial: any) => trial.displayCount)).toEqual([0, 1, 1]);
     expect(session.configuration.conditions.baseline).toEqual({ proactive: false, threshold: null });
     expect(session.configuration.signalVersion).toBe('planning-signals-v2');
@@ -127,6 +129,9 @@ for (const [sequence, task, firstEdit, nextEdit] of [
 ] as const) {
   test(`${task} late and failed advice never exposes text and storage failures remain exportable`, async ({ page }) => {
     const session = revealTask(consentToSession(createSession('FAILURES', sequence)));
+    const now = new Date(session.trials[0].startedAt!);
+    await page.clock.install({ time: now });
+    await page.clock.pauseAt(now);
     await page.goto('/');
     await page.evaluate(({ key, value }) => localStorage.setItem(key, value), { key: SESSION_STORAGE_KEY, value: JSON.stringify(session) });
     await page.reload();
@@ -142,6 +147,7 @@ for (const [sequence, task, firstEdit, nextEdit] of [
     });
     if (firstEdit === 'lodging') await page.getByLabel('Saturday-night lodging').selectOption('guesthouse');
     else await page.getByRole('button', { name: 'Add preparation block' }).click();
+    if (task === 'schedule') await page.clock.fastForward(30000);
     await expect.poll(() => calls).toBe(1);
     await page.evaluate(() => { Storage.prototype.setItem = function () { throw new DOMException('Full', 'QuotaExceededError'); }; });
     if (nextEdit === 'transport') await page.getByLabel('Transport option').selectOption('transit-pass');

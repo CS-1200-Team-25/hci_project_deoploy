@@ -33,6 +33,8 @@ export interface Trial {
   taskState?: unknown;
   taskVersion?: string;
   stateRevision: number;
+  /** Start of each currently unresolved stable signal's occurrence. */
+  issueStartedAt?: Record<string, number>;
   submissionAttempts?: { timestamp: number; stateRevision: number; validation: ValidationResult }[];
   finalPlan?: unknown;
   finalValidation?: ValidationResult;

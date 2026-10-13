@@ -130,6 +130,7 @@ test('storage read exceptions during editing are retained in the download', asyn
 });
 
 test('selection counts do not claim exposure and saved extension fields remain lossless', async ({ page }) => {
+  await page.clock.install();
   await page.route('**/api/interventions/config', route => route.fulfill({ status: 503, json: { error: 'provider-unconfigured' } }));
   await page.goto('/');
   await page.getByLabel('Participant ID').fill('EXPORT_SELECTION');
@@ -140,6 +141,7 @@ test('selection counts do not claim exposure and saved extension fields remain l
   await page.getByRole('button', { name: 'Continue to instructions' }).click();
   await page.getByRole('button', { name: 'Reveal first task' }).click();
   await page.getByRole('button', { name: 'Add Wrap buffet' }).click();
+  await page.clock.fastForward(120000);
   await expect(page.getByRole('status', { name: 'Supervisor generation status' })).toContainText('Assistant configuration could not be loaded');
   await page.evaluate(() => {
     const key = 'planning-pilot-session-v1';

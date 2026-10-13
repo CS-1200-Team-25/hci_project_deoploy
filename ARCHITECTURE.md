@@ -186,7 +186,7 @@ interface Intervention {
 
 ```ts
 const CONDITION_POLICY = {
-  baseline: { proactive: false, threshold: Infinity },
+  baseline: { proactive: false, threshold: null },
   low: { proactive: true, threshold: 0.75 },
   high: { proactive: true, threshold: 0.4 },
 } as const;
@@ -208,14 +208,26 @@ Participant action
   → log display and later acknowledgement/ignore behavior
 ```
 
-Use elapsed time since the prior intervention as a bounded pressure bonus, not raw time:
+Policy `pilot-policy-v4` (`pilot-6`) uses a separate continuous unresolved timer
+for each stable issue ID. Initial signals start at task reveal. Each committed
+edit retains start times for still-present IDs, removes resolved IDs, and gives
+new or returning IDs the edit timestamp. A severity change for the same ID does
+not restart its timer. Persist the per-trial `issueStartedAt` map across reloads;
+recover only finite timestamps within the trial and matching its current signals.
+Advice displays, unrelated edits, reservations and requests never reset issue
+timers. Display-based global/per-signal cooldowns remain separate eligibility
+checks. Prior-policy sessions are preserved and rejected as incompatible rather
+than silently changing their scoring semantics.
+
+Use an issue's unresolved age as a bounded pressure bonus:
 
 ```ts
-function recencyBonus(secondsSinceLastIntervention: number) {
-  if (secondsSinceLastIntervention < 30) return 0;
-  if (secondsSinceLastIntervention < 60) return 0.05;
-  if (secondsSinceLastIntervention < 120) return 0.1;
-  return 0.2;
+function recencyBonus(unresolvedSeconds: number) {
+  if (unresolvedSeconds < 30) return 0;
+  if (unresolvedSeconds < 60) return 0.15;
+  if (unresolvedSeconds < 120) return 0.30;
+  if (unresolvedSeconds < 180) return 0.45;
+  return 0.60;
 }
 ```
 
@@ -223,12 +235,14 @@ function recencyBonus(secondsSinceLastIntervention: number) {
 function chooseIntervention(
   signals: AgentSignal[],
   condition: ConditionId,
-  secondsSinceLastIntervention: number,
+  issueStartedAt: Record<string, number>,
+  now: number,
 ): { signal: AgentSignal; score: number } | null {
   if (!CONDITION_POLICY[condition].proactive) return null;
 
   const strongest = signals
-    .map((signal) => ({ signal, score: Math.min(1, signal.severity + recencyBonus(secondsSinceLastIntervention)) }))
+    .map((signal) => ({ signal, score: Math.min(1, signal.severity * 0.5
+      + recencyBonus(Math.max(0, now - (issueStartedAt[signal.id] ?? now)) / 1000)) }))
     .sort((a, b) => b.score - a.score)[0];
 
   if (!strongest || strongest.score < CONDITION_POLICY[condition].threshold) return null;
@@ -294,6 +308,8 @@ For every `signal_evaluated`, include at least:
   signalType: signal.type,
   signalId: signal.id,
   rawSeverity: signal.severity,
+  issueStartedAt,
+  unresolvedMs,
   recencyBonus,
   finalScore,
   threshold: CONDITION_POLICY[condition].threshold,
