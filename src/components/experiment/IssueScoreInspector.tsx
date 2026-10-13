@@ -17,7 +17,7 @@ export function IssueScoreInspector({ session }: { session: ExperimentSession })
     <h2 id="issue-score-title">AI issue scores (testing)</h2>
 
     <p>Deterministic task rules calculate severity. finalScore = min(1, severity + recencyBonus).
-      Eligibility requires finalScore â‰¥ threshold and no exclusion; only the highest eligible score is selected.</p>
+      Eligibility requires finalScore ≥ threshold and no exclusion; only the highest eligible score is selected.</p>
     <p>Threshold: {policy.threshold === null ? 'disabled (baseline)' : policy.threshold.toFixed(2)}.
       Inspecting or refreshing scores does not request advice or record study events.</p>
     <button type="button" onClick={() => setSnapshot(inspectIssueScores(session))}>Refresh issue scores</button>
@@ -34,9 +34,9 @@ export function IssueScoreInspector({ session }: { session: ExperimentSession })
             <dt>Recency bonus</dt><dd>{evaluation.recencyBonus.toFixed(3)}</dd>
             <dt>Final score</dt><dd>{evaluation.finalScore.toFixed(3)}</dd>
             <dt>Threshold</dt><dd>{evaluation.threshold === null ? 'disabled' : evaluation.threshold.toFixed(3)}</dd>
-            <dt>Eligibility</dt><dd>{evaluation.triggered ? 'Eligible â€” selected in preview'
-              : evaluation.exclusionReason === 'lower-priority' ? 'Eligible â€” lower priority'
-                : `Excluded â€” ${evaluation.exclusionReason}`}</dd>
+            <dt>Eligibility</dt><dd>{evaluation.triggered ? 'Eligible — selected in preview'
+              : evaluation.exclusionReason === 'lower-priority' ? 'Eligible — lower priority'
+                : `Excluded — ${evaluation.exclusionReason}`}</dd>
           </dl>
         </li>)}
       </ul>

@@ -78,7 +78,7 @@ test('supervisor sees score fields and baseline exclusion while inspection leave
   await expect(food).toContainText('Severity0.850');
   await expect(food).toContainText('Recency bonus0.000');
   await expect(food).toContainText('Final score0.850');
-  await expect(food).toContainText('Excluded â€” baseline');
+  await expect(food).toContainText('Excluded — baseline');
   await page.clock.runFor(120000);
 
   await expect(food).toContainText('Recency bonus0.200');
