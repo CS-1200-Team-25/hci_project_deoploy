@@ -91,3 +91,7 @@ select { font: inherit; padding: 10px; border: 1px solid #b9c5d5; border-radius:
 .intervention-card { margin-top: 1rem; padding: 1rem; border: 1px solid #d9ddd5; border-radius: .75rem; overflow-wrap: anywhere; }
 .intervention-card button { margin: .25rem .25rem .25rem 0; }
 .generation-status { margin-top: 1rem; padding: .75rem; border: 1px solid #a16b2b; border-radius: .5rem; background: #fff8e9; }
+
+.issue-score-panel { margin-top: 24px; padding: 20px; border: 1px solid #9aabc1; border-radius: 12px; background: #fbfcfe; }
+.issue-score-panel > p { margin-top: 12px; }
+.issue-score-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; }

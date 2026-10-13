@@ -17,7 +17,7 @@ instructions, three task/post-task-survey pairs, final survey and completion.
 Birthday planning
 now supports catalog selection, quantity edits, scheduled activity moves and
 removal. Its public task contract validates 12 food servings, 12 drink servings,
-one activity, the $300 budget and activities within 14:00–17:00 without overlap.
+one activity, the $300 budget and activities within 14:00â€“17:00 without overlap.
 Decorations are an optional improvement. Weekend planning now supports lodging
 and transport selections and activity add/remove/edit/day/time moves. Weekly
 scheduling includes immutable fixed commitments plus editable preparation and
@@ -26,7 +26,7 @@ submission, timing and outcome lifecycle.
 
 Weekend catalog version1 uses integer minutes from fictional Saturday00:00;
 Sunday times add1440. Trip anchors are station arrival Saturday09:00 and station
-departure Sunday18:00. Selected lodging reserves Saturday22:00–Sunday08:00,
+departure Sunday18:00. Selected lodging reserves Saturday22:00â€“Sunday08:00,
 with travel to check-in and after checkout checked using the fixed selected-
 transport matrix. All activity entry fees, one-night lodging and prepaid
 transport costs count toward$500. Every day needs two activity bookings; each
@@ -35,9 +35,9 @@ overlap each other or overnight lodging. Exact travel/window/budget boundaries
 pass. Feasible backtracking is optional, never a hidden passing requirement.
 The explicit weekend scenario is included in scenario version2.
 
-Schedule fixture version1 preserves Monday/Wednesday/Friday09:00–11:00 classes
-and Tuesday/Thursday13:00–17:00 work. Blocks use day indices0–4 and local whole
-minutes; durations are positive whole minutes and all blocks fit08:00–20:00.
+Schedule fixture version1 preserves Monday/Wednesday/Friday09:00â€“11:00 classes
+and Tuesday/Thursday13:00â€“17:00 work. Blocks use day indices0â€“4 and local whole
+minutes; durations are positive whole minutes and all blocks fit08:00â€“20:00.
 Intervals include their start and exclude their end, allowing adjacent blocks.
 At least240 non-overlapping preparation minutes must occur before Friday17:00.
 The portion of a preparation block before the deadline counts, even when its
@@ -72,10 +72,12 @@ an in-memory authorization for exceptional termination of that session. Codes
 are stored as salted verifiers; authorization is not persisted and reload
 relocks controls. A fixed bottom-left supervisor icon opens a side drawer with
 access and storage tools, keeping them outside the participant workspace.
-The drawer also offers read-only testing snapshots of current issue severity,
+A drawer toggle shows read-only testing scores on the main page: current issue severity,
 recency bonus, final score, condition threshold and engine eligibility/exclusions.
 Opening or refreshing the inspector never logs events, reserves signals, requests
-advice or changes study state. Scores refresh on plan changes or explicit refresh.
+advice or changes study state. Scores refresh on plan changes and every second.
+The toggle defaults off, remains enabled during navigation in the current tab,
+and resets on reload.
 This is a local supervised safeguard, not remote authentication
 or protection against a participant modifying the application/browser storage.
 
@@ -100,15 +102,15 @@ Scenario, sequence and condition-policy identifiers are versioned pilot drafts.
 Baseline's disabled threshold is serialized explicitly as `null` alongside
 `proactive: false`. Study knobs and content must be frozen after piloting before
 recruitment. See `ARCHITECTURE.md` and GitHub issues #3 and #4 for the full
-contract and issues #4–#9 for the implemented slices.
+contract and issues #4â€“#9 for the implemented slices.
 
 Birthday signal version1 is independent of condition. Missing food/drink have
 severity .85 and missing activity .8. Present food/drink with fewer than12
-servings score .4 + .4 × missing fraction. Budget pressure above$240 through$300
-scores .6 × (cost−240)/60; excess scores .8 + .2 × (cost−300)/300, capped at1.
-Activities outside14:00–17:00 and each overlapping pair score .9, with stable
+servings score .4 + .4 Ã— missing fraction. Budget pressure above$240 through$300
+scores .6 Ã— (costâˆ’240)/60; excess scores .8 + .2 Ã— (costâˆ’300)/300, capped at1.
+Activities outside14:00â€“17:00 and each overlapping pair score .9, with stable
 item/pair IDs. A valid activity schedule's largest gap of at least90 minutes
-scores .35 × gap/180 (optional efficiency). All scores clamp to[0,1]. Stable
+scores .35 Ã— gap/180 (optional efficiency). All scores clamp to[0,1]. Stable
 category IDs remain unchanged across revisions; pair IDs sort item IDs.
 
 Policy version2 disables baseline explicitly; low/high thresholds are .75/.4.

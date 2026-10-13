@@ -71,17 +71,19 @@ test('supervisor sees score fields and baseline exclusion while inspection leave
   await page.getByRole('button', { name: 'Reveal first task' }).click();
   const before = await page.evaluate(() => localStorage.getItem('planning-pilot-session-v1'));
   await page.getByRole('button', { name: 'Open supervisor tools' }).click();
-  await page.getByText('AI issue scores (testing)', { exact: true }).click();
+  await page.getByRole('switch', { name: 'Show AI issue scores on main page' }).check();
+  await page.getByRole('button', { name: 'Close supervisor tools' }).click();
   await expect(page.getByText('Threshold: disabled (baseline).', { exact: false })).toBeVisible();
   const food = page.locator('.issue-score-list li').filter({ has: page.getByRole('heading', { name: 'birthday:missing:food', exact: true }) });
   await expect(food).toContainText('Severity0.850');
   await expect(food).toContainText('Recency bonus0.000');
   await expect(food).toContainText('Final score0.850');
-  await expect(food).toContainText('Excluded — baseline');
+  await expect(food).toContainText('Excluded â€” baseline');
   await page.clock.runFor(120000);
-  await page.getByRole('button', { name: 'Refresh issue scores' }).click();
+
   await expect(food).toContainText('Recency bonus0.200');
   await expect(food).toContainText('Final score1.000');
   expect(await page.evaluate(() => localStorage.getItem('planning-pilot-session-v1'))).toBe(before);
+  await page.getByRole('button', { name: 'Open supervisor tools' }).click();
   await expect(page.getByText('Supervisor storage tools', { exact: true })).toBeVisible();
 });
