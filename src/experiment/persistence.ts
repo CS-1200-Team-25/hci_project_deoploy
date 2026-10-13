@@ -135,6 +135,9 @@ export function loadSession(storage: SessionStorage = localStorage): ExperimentS
     throw new Error('Stored session is incompatible or damaged. The supervisor must preserve it before starting another session.');
   }
   const sequence = experimentSequences[(value.sequenceIndex as number) - 1];
+  const latestRecordedAt = value.events.reduce((latest: number, event: unknown) =>
+    isRecord(event) && typeof event.timestamp === 'number' && Number.isFinite(event.timestamp)
+      ? Math.max(latest, event.timestamp) : latest, value.lastSavedAt as number);
   const trialIds = new Set<string>();
   const assignmentsValid = value.sequenceId === sequence.id && value.trials.every((trial, index) => {
     if (!isRecord(trial) || typeof trial.id !== 'string' || trialIds.has(trial.id)
@@ -153,6 +156,17 @@ export function loadSession(storage: SessionStorage = localStorage): ExperimentS
     trialIds.add(trial.id);
     const definition = getTask(sequence.trials[index].task);
     if (trial.status !== 'pending' && definition && (trial.taskVersion !== definition.version || !definition.isState(trial.taskState))) return false;
+    if (trial.status === 'pending') {
+      if (trial.issueStartedAt !== undefined) return false;
+    } else if (definition) {
+      if (!isRecord(trial.issueStartedAt)) return false;
+      const activeIds = new Set(definition.evaluateSignals(trial.taskState).map(signal => signal.id));
+      if (Object.keys(trial.issueStartedAt).length !== activeIds.size
+        || !Object.entries(trial.issueStartedAt).every(([id, startedAt]) => activeIds.has(id)
+          && typeof startedAt === 'number' && Number.isFinite(startedAt)
+          && startedAt >= (trial.startedAt as number)
+          && startedAt <= (trial.completedAt as number | undefined ?? latestRecordedAt))) return false;
+    }
     if (!validRecordedOutcome(trial, (state) => definition ? definition.isState(state) : state !== undefined)) return false;
     if (!validAgentHistory(trial, value.sessionId as string)) return false;
     return true;

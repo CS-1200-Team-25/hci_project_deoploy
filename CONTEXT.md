@@ -113,14 +113,22 @@ item/pair IDs. A valid activity schedule's largest gap of at least90 minutes
 scores .35 × gap/180 (optional efficiency). All scores clamp to[0,1]. Stable
 category IDs remain unchanged across revisions; pair IDs sort item IDs.
 
-Policy version2 disables baseline explicitly; low/high thresholds are .75/.4.
+Policy version3 disables baseline explicitly; low/high thresholds are .75/.4.
 Meaningful committed edits evaluate across all tasks. Visible active tasks also
 evaluate after30 seconds without an evaluation, using the same policy and
 generation path without changing plan revisions. Baseline, pending requests and
 reserved selections skip idle checks. Mount/reload waits a fresh30 seconds;
 hidden tabs skip checks. Reveal, unchanged edits and reload do not immediately
-evaluate or replay requests. Recency uses the last actual display, or trial start:0 below30 seconds,
-.05 at30, .1 at60 and .2 at120, then remains bounded. Final score caps at1.
+evaluate or replay requests. Recency uses each stable issue ID's continuous unresolved
+age:0 below30 seconds, .05 at30, .1 at60 and .2 at120, then remains bounded.
+Initial issues start at task reveal; new issues start on the committed edit that
+introduces them. An issue disappearing from the evaluator clears its timer; if
+it returns, its timer starts at zero. Severity changes for the same unresolved
+ID keep its timer. Unrelated edits, selections and advice displays do not reset
+issue timers. Persisted per-trial `issueStartedAt` maps retain only current
+signals and survive reload/hidden tabs. Logs and score previews include each
+issue's start time and unresolved milliseconds; diagnostics show unresolved
+seconds. Final score caps at1.
 Actual displays impose30-second global and60-second per-signal cooldowns.
 Resolved, in-flight, reserved and cooling candidates are excluded before
 ranking by score then stable ID; at most one candidate is selected per edit.
@@ -172,7 +180,7 @@ cannot confirm that a file was saved. Failure events flag compromised retention;
 Supervisor storage tools offer downloads throughout the participant flow.
 
 
-All-task signal configuration `pilot-4` / `planning-signals-v2` keeps the
+All-task signal configuration `pilot-5` / `planning-signals-v2` keeps the
 birthday rules above and adds condition-independent weekend and schedule
 signals. The evaluator never changes the validator or reads condition metadata.
 Generation context includes the current plan, fixed constraints and applicable

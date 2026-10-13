@@ -58,7 +58,7 @@ for (const [sequence, task, state] of [[17, 'weekend', { ...passing, lodgingId: 
 test('identical optional schedules expose controlled low/high differences while all conditions share passing requirements', () => {
   const state = { blocks: [...FIXED_COMMITMENTS, { id: 'prep', kind: 'preparation' as const, day: 0, startMinute: 720, durationMinutes: 240 }] };
   const signals = scheduleTask.evaluateSignals(state);
-  const history = { now: 2000, trialStartedAt: 1000, displays: [], inFlightSignalIds: [], reservedSignalIds: [], resolvedSignalIds: [], displayCooldowns: PILOT_CONFIGURATION.displayCooldowns };
+  const history = { now: 2000, issueStartedAt: Object.fromEntries(signals.map(signal => [signal.id, 1000])), displays: [], inFlightSignalIds: [], reservedSignalIds: [], resolvedSignalIds: [], displayCooldowns: PILOT_CONFIGURATION.displayCooldowns };
   expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.baseline, history).selected).toBeNull();
   expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.low, history).selected).toBeNull();
   expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.high, history).selected?.signal.id).toBe('schedule:optional:exercise');

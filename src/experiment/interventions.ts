@@ -18,7 +18,7 @@ function evaluateTrialSignals(session: ExperimentSession, signals: AgentSignal[]
   const history = trial.agentHistory ?? { selections: [], displays: [], inFlightSignalIds: [] };
   const activeIds = new Set(signals.map(signal => signal.id));
   return evaluateInterventions(signals, session.configuration.conditions[trial.condition], {
-    now, trialStartedAt: trial.startedAt!, displays: history.displays,
+    now, issueStartedAt: trial.issueStartedAt ?? {}, displays: history.displays,
     hasUnansweredIntervention: history.interventions?.some(advice => !advice.response),
     inFlightSignalIds: history.inFlightSignalIds,
     reservedSignalIds: history.selections.filter(selection => selection.resolvedAt === undefined && activeIds.has(selection.signal.id))

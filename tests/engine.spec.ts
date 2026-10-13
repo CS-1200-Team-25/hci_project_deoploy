@@ -26,7 +26,7 @@ test('meaningful edits persist reservations without replay or exposure; damaged 
 
 test('filters before ranking and uses stable IDs and actual display cooldown boundaries', () => {
   const signals = ['z', 'a', 'busy', 'resolved'].map((id) => ({ id, type: 'coverage' as const, severity: 0.8, message: id }));
-  const context = { now: 60_000, trialStartedAt: 0, displays: [{ signalId: 'z', timestamp: 0 }], inFlightSignalIds: ['busy'], reservedSignalIds: [], resolvedSignalIds: ['resolved'] };
+  const context = { now: 60_000, issueStartedAt: Object.fromEntries(signals.map(signal => [signal.id, 0])), displays: [{ signalId: 'z', timestamp: 0 }], inFlightSignalIds: ['busy'], reservedSignalIds: [], resolvedSignalIds: ['resolved'] };
   expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.high, context).selected?.signal.id).toBe('a');
   expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.high, { ...context, now: 29_999 }).selected).toBeNull();
   const at30 = evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.high, { ...context, now: 30_000 });
@@ -53,7 +53,7 @@ test('birthday signals are normalized, stable, and independent of policy; feasib
 
 test('identical signals follow disabled baseline and the lower high threshold without claiming a display', () => {
   const signals = [{ id: 'coverage', type: 'coverage' as const, severity: 0.6, message: 'Guest coverage is short.' }];
-  const context = { now: 1000, trialStartedAt: 1000, displays: [], inFlightSignalIds: [], reservedSignalIds: [], resolvedSignalIds: [] };
+  const context = { now: 1000, issueStartedAt: { coverage: 1000 }, displays: [], inFlightSignalIds: [], reservedSignalIds: [], resolvedSignalIds: [] };
   expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.baseline, context)).toMatchObject({ selected: null, evaluations: [{ threshold: null, proactive: false, rawSeverity: 0.6, recencyBonus: 0, finalScore: 0.6, triggered: false, exclusionReason: 'baseline' }] });
   expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.low, context).selected).toBeNull();
   expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.high, context).selected?.signal.id).toBe('coverage');

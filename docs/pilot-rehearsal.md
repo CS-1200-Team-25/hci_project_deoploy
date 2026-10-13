@@ -1,7 +1,7 @@
 # Supervised pilot rehearsal
 
 Use a supervised desktop with pseudonymous rehearsal IDs. These materials and
-`pilot-4` / `planning-signals-v2` are proposed defaults for research-team review.
+`pilot-5` / `planning-signals-v2` / `pilot-policy-v3` are proposed defaults for research-team review.
 They do not establish recruitment approval, task equivalence or statistical
 power. Consent, survey wording, catalogs, policies and deployment configuration
 need review and a recorded freeze before recruitment.

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { consentToSession, createSession, revealTask } from '../src/experiment/session';
 import { inspectIssueScores } from '../src/experiment/interventions';
-import { beginGeneration, finishGeneration } from '../src/experiment/generation';
+import { abandonSelection, beginGeneration, finishGeneration } from '../src/experiment/generation';
 import { updateTaskState } from '../src/experiment/session';
 
 test('read-only preview uses severity, recency and disabled/low/high policies across tasks', () => {
@@ -12,8 +12,11 @@ test('read-only preview uses severity, recency and disabled/low/high policies ac
     { id: 'craft', optionId: 'craft-workshop', quantity: 1, startMinute: 885 },
   ] };
   for (const [index, threshold, excluded] of [[1, null, 'baseline'], [3, .75, 'below-threshold'], [5, .4, null]] as const) {
-    const session = revealTask(consentToSession(createSession('SCORE', index, 1000), 1000), 1000);
-    session.trials[0].taskState = state;
+    let session = updateTaskState(revealTask(consentToSession(createSession('SCORE', index, 1000), 1000), 1000),
+      state, { type: 'item_added', payload: {} }, 1000);
+    for (const selection of session.trials[0].agentHistory?.selections ?? []) {
+      session = abandonSelection(session, selection.id, 'test-preview', 1000);
+    }
     const before = JSON.stringify(session);
     expect(inspectIssueScores(session, 1000)!.evaluations).toMatchObject([{
       signalId: 'birthday:coverage:food', rawSeverity: .6, recencyBonus: 0,

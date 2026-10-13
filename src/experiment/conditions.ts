@@ -1,10 +1,10 @@
 import type { PilotConfiguration } from '../types/experiment';
 
 export const PILOT_CONFIGURATION: PilotConfiguration = {
-  version: 'pilot-4',
+  version: 'pilot-5',
   sequenceVersion: 'task-condition-cross-36-v1',
   scenarioVersion: 'pilot-scenarios-v3',
-  policyVersion: 'pilot-policy-v2',
+  policyVersion: 'pilot-policy-v3',
   signalVersion: 'planning-signals-v2',
   displayCooldowns: { globalMs: 30_000, signalMs: 60_000 },
   surveyVersion: 'pilot-surveys-v1',
