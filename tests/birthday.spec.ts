@@ -113,7 +113,8 @@ test('failed submission continues timing and a corrected passing submission free
   await expect(page.getByRole('alert')).toBeInViewport();
   await page.getByRole('button', { name: 'Dismiss validation notification' }).click();
   await expect(page.getByRole('alert')).toHaveCount(0);
-  await expect(page.getByText('Requirements to correct')).toBeVisible();
+  await expect(page.getByText('Requirements to correct')).toHaveCount(0);
+  await expect(page.getByText('Optional improvements')).toHaveCount(0);
   await page.getByRole('button', { name: 'Complete task' }).click();
   await expect(page.getByRole('alert')).toBeInViewport();
   await expect(page.getByRole('alert')).toContainText('Include at least 12 food servings');

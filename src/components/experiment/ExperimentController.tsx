@@ -8,7 +8,6 @@ import { recordEvent } from '../../experiment/logger';
 import { ExperimentShell } from './ExperimentShell';
 import { TaskRenderer } from './TaskRenderer';
 import { getTask } from '../../tasks/registry';
-import { ValidationFeedback } from './ValidationFeedback';
 import { ValidationToast } from './ValidationToast';
 import { configureSupervisorAccess } from '../../experiment/supervisor';
 import { SupervisorControls } from './SupervisorControls';
@@ -278,7 +277,6 @@ export function ExperimentController() {
       {session.phase === 'task' && <>
         <h2>Scenario and minimum requirements</h2>
         <p>{scenario.instructions}</p>
-        <ValidationFeedback result={trial.submissionAttempts?.at(-1)?.validation} announceErrors={false} />
         {validationToast && <ValidationToast key={validationToast.attempt} errors={validationToast.errors}
           onDismiss={() => setValidationToast(null)} />}
         <TaskRenderer taskId={trial.task} state={trial.taskState} onChange={editTask} />
