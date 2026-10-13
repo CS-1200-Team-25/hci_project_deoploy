@@ -24,6 +24,7 @@ test('Gemini is the default and native structured advice uses server-only creden
     assert.equal(url, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent');
     assert.equal(options.headers['x-goog-api-key'], 'gemini-secret');
     const body = JSON.parse(options.body);
+    assert.deepEqual(body.generationConfig.thinkingConfig, { thinkingBudget: 0 });
     assert.equal(body.generationConfig.responseFormat.text.mimeType, 'APPLICATION_JSON');
     assert.equal(body.generationConfig.responseFormat.text.schema.additionalProperties, false);
     assert.equal(body.generationConfig.responseFormat.text.schema.properties.target.type, 'null');
@@ -33,6 +34,7 @@ test('Gemini is the default and native structured advice uses server-only creden
   } }, async ({ url, post }) => {
     const config = await (await fetch(`${url}/api/interventions/config`)).json();
     assert.equal(config.provider, 'gemini');
+    assert.equal(config.settings.thinkingBudget, 0);
     assert.equal(JSON.stringify(config).includes('gemini-secret'), false);
     const response = await post();
     assert.equal(response.status, 200);

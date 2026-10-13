@@ -7,7 +7,7 @@ export interface GenerationConfiguration {
   model: string;
   promptVersion: string;
   schemaVersion: string;
-  settings: { maxOutputTokens: number };
+  settings: { maxOutputTokens: number; thinkingBudget?: number };
   timeoutMs: number;
 }
 export interface GenerationRequest {
@@ -44,6 +44,7 @@ export function validGenerationConfiguration(value: unknown): value is Generatio
     && typeof config.promptVersion === 'string' && !!config.promptVersion
     && typeof config.schemaVersion === 'string' && !!config.schemaVersion
     && Number.isSafeInteger(config.settings?.maxOutputTokens) && config.settings.maxOutputTokens > 0
+    && (config.settings.thinkingBudget === undefined || (Number.isSafeInteger(config.settings.thinkingBudget) && config.settings.thinkingBudget >= 0))
     && Number.isSafeInteger(config.timeoutMs) && config.timeoutMs >= 100 && config.timeoutMs <= 120000;
 }
 

@@ -12,6 +12,12 @@ needs the service. Keep .env private and never prefix credentials with VITE_.
 The pilot uses Gemini's native generateContent API only. The default model is
 gemini-3.5-flash-lite; GEMINI_MODEL selects a different available Gemini model.
 The request uses systemInstruction, contents and a JSON-schema responseFormat.
+Every generation request explicitly sends thinkingConfig.thinkingBudget = 0.
+The public configuration and retained request/response settings record this budget.
+Historical records without a budget remain readable. This requests thinking off
+on models that support a zero budget; Gemini 3 Flash-Lite does not support full
+thinking-off, so zero does not guarantee disabled thinking or faster responses.
+See [Google?s thinking guide](https://ai.google.dev/gemini-api/docs/generate-content/thinking).
 The server validates the returned signal ID, target and advice before exposure.
 OpenAI Responses and chat-completions-compatible services are no longer supported.
 

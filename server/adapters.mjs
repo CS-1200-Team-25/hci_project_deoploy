@@ -14,7 +14,7 @@ export const geminiAdapter = Object.freeze({
       body: {
         systemInstruction: { parts: [{ text: prompt }] },
         contents: [{ role: 'user', parts: [{ text: JSON.stringify(input) }] }],
-        generationConfig: { maxOutputTokens: config.settings.maxOutputTokens, responseFormat: { text: { mimeType: 'APPLICATION_JSON', schema } } },
+        generationConfig: { maxOutputTokens: config.settings.maxOutputTokens, thinkingConfig: { thinkingBudget: config.settings.thinkingBudget ?? 0 }, responseFormat: { text: { mimeType: 'APPLICATION_JSON', schema } } },
       },
     };
   },
