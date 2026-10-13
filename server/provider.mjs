@@ -9,7 +9,8 @@ export function providerConfiguration(env = process.env) {
   const model = env.GEMINI_MODEL ?? env.LLM_MODEL ?? geminiAdapter.defaultModel;
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 120000) throw Error('GENERATION_TIMEOUT_MS must be an integer from 100 to 120000');
   if (typeof model !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/.test(model)) throw Error('GEMINI_MODEL must be a valid model identifier');
-  return Object.freeze({ provider, model, promptVersion: 'intervention-prompt-v2', schemaVersion: 'intervention-schema-v1', settings: Object.freeze({ maxOutputTokens: 300, thinkingBudget: 0 }), timeoutMs });
+  const thinking = /^gemini-3(?:[.-]).*flash-lite/.test(model) ? { thinkingLevel: 'minimal' } : { thinkingBudget: 0 };
+  return Object.freeze({ provider, model, promptVersion: 'intervention-prompt-v2', schemaVersion: 'intervention-schema-v1', settings: Object.freeze({ maxOutputTokens: 300, ...thinking }), timeoutMs });
 }
 export const configuration = providerConfiguration();
 const prompt = [

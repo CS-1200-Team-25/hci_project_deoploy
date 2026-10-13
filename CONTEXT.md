@@ -142,9 +142,9 @@ on failure/completion/revalidation and records exposure only when advice is
 shown. Selected signals from all three tasks use a loopback server to request structured
 advice through a Gemini-only server integration using the native generateContent API.
 Gemini-specific configuration is primary; existing LLM_* settings remain migration
-aliases. New requests explicitly send and retain a zero thinking budget; historical
-records without that setting remain readable. Model support determines whether
-thinking can actually be disabled. OpenAI and chat-completions-compatible services are no longer supported. Baseline makes
+aliases. Gemini 3 Flash-Lite requests send and retain the minimal thinking level instead of
+a rejected zero budget; other configured models retain the zero budget. Historical
+records remain readable. Minimal does not guarantee disabled thinking. OpenAI and chat-completions-compatible services are no longer supported. Baseline makes
 no generation requests. Provider identity, model, prompt/schema,
 output limit and finite timeout are shared across active conditions and recorded
 with every request; condition is never sent to the provider. The provider key
