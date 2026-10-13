@@ -4,6 +4,29 @@ import { evaluateInterventions } from '../agent/engine';
 import { recordEvent } from './logger';
 import { getTask } from '../tasks/registry';
 
+/** Read-only decision preview: no events, reservations, requests or displays. */
+export function inspectIssueScores(session: ExperimentSession, now = Date.now()) {
+  const trial = session.trials[session.currentTrialIndex];
+  const definition = getTask(trial.task);
+  if (session.phase !== 'task' || trial.status !== 'active' || trial.startedAt === undefined || !definition) return null;
+  const signals = definition.evaluateSignals(trial.taskState);
+  return { now, stateRevision: trial.stateRevision, signals, ...evaluateTrialSignals(session, signals, now) };
+}
+
+function evaluateTrialSignals(session: ExperimentSession, signals: AgentSignal[], now: number) {
+  const trial = session.trials[session.currentTrialIndex];
+  const history = trial.agentHistory ?? { selections: [], displays: [], inFlightSignalIds: [] };
+  const activeIds = new Set(signals.map(signal => signal.id));
+  return evaluateInterventions(signals, session.configuration.conditions[trial.condition], {
+    now, trialStartedAt: trial.startedAt!, displays: history.displays,
+    hasUnansweredIntervention: history.interventions?.some(advice => !advice.response),
+    inFlightSignalIds: history.inFlightSignalIds,
+    reservedSignalIds: history.selections.filter(selection => selection.resolvedAt === undefined && activeIds.has(selection.signal.id))
+      .map(selection => selection.signal.id),
+    resolvedSignalIds: [], displayCooldowns: session.configuration.displayCooldowns,
+  });
+}
+
 /** Idle evaluations share edit policy without changing the participant's plan revision. */
 export function evaluateIdleTrial(session: ExperimentSession, now = Date.now()): ExperimentSession {
   const trial = session.trials[session.currentTrialIndex];
@@ -30,13 +53,7 @@ export function evaluateCommittedEdit(session: ExperimentSession, signals: Agent
   const activeIds = new Set(signals.map((signal) => signal.id));
   const selections = history.selections.map((selection) => selection.resolvedAt === undefined && !activeIds.has(selection.signal.id)
     ? { ...selection, resolvedAt: now } : selection);
-  const result = evaluateInterventions(signals, session.configuration.conditions[trial.condition], {
-    now, trialStartedAt: trial.startedAt!, displays: history.displays,
-    hasUnansweredIntervention: history.interventions?.some(advice => !advice.response),
-    inFlightSignalIds: history.inFlightSignalIds,
-    reservedSignalIds: selections.filter((selection) => selection.resolvedAt === undefined).map((selection) => selection.signal.id),
-    resolvedSignalIds: [], displayCooldowns: session.configuration.displayCooldowns,
-  });
+  const result = evaluateTrialSignals(session, signals, now);
   let next = session;
   for (const evaluation of result.evaluations) {
     next = recordEvent(next, 'signal_evaluated', { ...evaluation, stateRevision: trial.stateRevision,

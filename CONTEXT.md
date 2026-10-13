@@ -72,6 +72,12 @@ an in-memory authorization for exceptional termination of that session. Codes
 are stored as salted verifiers; authorization is not persisted and reload
 relocks controls. A fixed bottom-left supervisor icon opens a side drawer with
 access and storage tools, keeping them outside the participant workspace.
+A drawer toggle shows read-only testing scores on the main page: current issue severity,
+recency bonus, final score, condition threshold and engine eligibility/exclusions.
+Opening or refreshing the inspector never logs events, reserves signals, requests
+advice or changes study state. Scores refresh on plan changes and every second.
+The toggle defaults off, remains enabled during navigation in the current tab,
+and resets on reload.
 This is a local supervised safeguard, not remote authentication
 or protection against a participant modifying the application/browser storage.
 

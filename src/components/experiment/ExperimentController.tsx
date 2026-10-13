@@ -12,6 +12,7 @@ import { ValidationToast } from './ValidationToast';
 import { configureSupervisorAccess } from '../../experiment/supervisor';
 import { SupervisorControls } from './SupervisorControls';
 import { SupervisorDrawer } from './SupervisorDrawer';
+import { IssueScoreInspector } from './IssueScoreInspector';
 import { assistanceWasDisplayed, setFinalSurveyDraft, setPostTaskSurveyDraft, submitFinalSurvey, submitPostTaskSurvey } from '../../experiment/surveys';
 import { PostTaskSurveyForm } from './PostTaskSurveyForm';
 import { FinalSurveyForm } from './FinalSurveyForm';
@@ -38,6 +39,7 @@ export function ExperimentController() {
   const [consented, setConsented] = useState(false);
   const [error, setError] = useState(recovery.error);
   const [supervisorCode, setSupervisorCode] = useState('');
+  const [showIssueScores, setShowIssueScores] = useState(false);
   const creating = useRef(false);
   const generationConfig = useRef<GenerationConfiguration | null>(null);
   const pendingRequest = useRef<{ id: string; trialId: string; revision: number; controller: AbortController; timer: ReturnType<typeof setTimeout> } | null>(null);
@@ -293,7 +295,14 @@ export function ExperimentController() {
         onChange={(draft) => commit(setFinalSurveyDraft(sessionRef.current!, draft))} onSubmit={() => commit(submitFinalSurvey(sessionRef.current!))} />}
       {session.phase === 'complete' && <><h2>Session complete</h2><p>Thank you. Tell the supervisor you have finished so they can export the session records.</p></>}
       <GenerationStatus events={session.events} />
+      {showIssueScores && <IssueScoreInspector session={session} />}
       <SupervisorDrawer key={session.phase}>
+      <label className="checkbox-label">
+        <input type="checkbox" role="switch" checked={showIssueScores}
+          onChange={event => setShowIssueScores(event.target.checked)} />
+        Show AI issue scores on main page
+      </label>
+      <p>Testing only. Scores update automatically while you edit. Turn off for participant sessions.</p>
       {session.phase === 'task' && definition && <SupervisorControls session={session} onTerminate={(authorization, reason) => commit(terminateTask(sessionRef.current!, authorization, reason))} />}
       <details className="supervisor-controls">
         <summary>Supervisor storage tools</summary>

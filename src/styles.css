@@ -62,6 +62,10 @@ button:focus-visible, input:focus-visible { outline: 3px solid #6e9edc; outline-
 .supervisor-drawer-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .supervisor-drawer p { margin-top: 16px; }
 .supervisor-drawer input, .supervisor-drawer textarea { min-width: 0; width: 100%; }
+.issue-score-list { list-style: none; padding: 0; }
+.issue-score-list li { margin-top: 16px; padding: 12px; border: 1px solid #dfe4ec; border-radius: 8px; overflow-wrap: anywhere; }
+.issue-score-list dl { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; font-size: .85rem; }
+.issue-score-list dd { margin: 0; font-variant-numeric: tabular-nums; }
 textarea { font: inherit; min-height: 80px; border: 1px solid #b9c5d5; border-radius: 6px; padding: 10px; }
 select { font: inherit; padding: 10px; border: 1px solid #b9c5d5; border-radius: 6px; max-width: 100%; }
 .trip-options { display: grid; gap: 16px; margin-bottom: 24px; }
@@ -87,3 +91,7 @@ select { font: inherit; padding: 10px; border: 1px solid #b9c5d5; border-radius:
 .intervention-card { margin-top: 1rem; padding: 1rem; border: 1px solid #d9ddd5; border-radius: .75rem; overflow-wrap: anywhere; }
 .intervention-card button { margin: .25rem .25rem .25rem 0; }
 .generation-status { margin-top: 1rem; padding: .75rem; border: 1px solid #a16b2b; border-radius: .5rem; background: #fff8e9; }
+
+.issue-score-panel { margin-top: 24px; padding: 20px; border: 1px solid #9aabc1; border-radius: 12px; background: #fbfcfe; }
+.issue-score-panel > p { margin-top: 12px; }
+.issue-score-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; }
