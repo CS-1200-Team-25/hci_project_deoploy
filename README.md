@@ -15,6 +15,34 @@ npm install
 npm run dev
 ```
 
+Open the local URL printed by Vite (normally http://localhost:5173). For a
+task-only dry run, leave the provider stopped and use a baseline sequence:
+**1** for birthday first, **13** for weekend first, or **25** for weekly schedule
+first. Enter a disposable participant ID and a supervisor access code of at
+least six characters, then complete consent and reveal the first task.
+
+To enable AI suggestions, copy `.env.example` to `.env` and set
+`GEMINI_API_KEY`. Start the provider in a second terminal while Vite stays running:
+
+```sh
+npm run provider
+```
+
+Keep `.env` private. Restart the provider after changing its configuration and
+reload the browser. See [provider setup and troubleshooting](docs/provider.md).
+Low/high sessions without the provider can show a configuration failure when
+an issue qualifies; they cannot display generated suggestions.
+
+For focused testing, choose the first task and condition with these sequence indices:
+
+| First task | Baseline | Low eagerness | High eagerness |
+| --- | ---: | ---: | ---: |
+| Birthday | 1 | 3 | 5 |
+| Weekend | 13 | 15 | 17 |
+| Weekly schedule | 25 | 27 | 29 |
+
+Build and typecheck with:
+
 ```sh
 npm run typecheck
 npm run build
@@ -45,7 +73,34 @@ scenario reveal and includes time in hidden tabs and across reloads.
 Damaged or incompatible saved data is preserved and blocks a replacement
 session. Saving failures show an alert and retain current data in memory; keep
 that tab open for the supervisor. Clearing browser data removes local records.
-This incremental prototype does not yet provide session export or a reset UI.
+Use supervisor storage tools to download session JSON before clearing data.
+
+## Inspecting session JSON
+
+In Chrome or Edge, open **Dev Tools → Application → Local Storage → the app's
+origin** (normally `http://localhost:5173`). Select the
+**`planning-pilot-session-v1`** key. Its value is the saved session JSON,
+including assignment, trials, plans, configuration and ordered events.
+
+To inspect a parsed copy in the Dev Tools Console:
+
+```js
+JSON.parse(localStorage.getItem('planning-pilot-session-v1'))
+```
+
+For a downloadable analysis file, open **Supervisor tools → Supervisor storage
+tools → Download session JSON**. The export includes the session, ordered events
+and derived trial metrics, and excludes the supervisor verifier. Raw local
+storage includes that verifier and is not the same format as the export.
+
+Use `trialMetrics[].displayCount` in the export or `agent_intervention_shown`
+events to count actual popups. Requests and selections are separate from displays;
+generation records include `requestedAt`, `finishedAt` and `latencyMs`.
+
+To start a fresh disposable test, export any records you need, delete only the
+`planning-pilot-session-v1` key in Local Storage and reload. Local storage belongs
+to the browser profile and origin; another port or browser can have different data.
+Incompatible saved sessions are preserved rather than silently migrated.
 
 The birthday workspace uses the versioned fixed catalog with editable quantities
 and scheduled activity starts. Submission checks guest coverage, budget and
@@ -82,11 +137,13 @@ by task/order, or no preference, with an optional explanation. Final submission
 reaches completion; ended plans and submitted surveys remain immutable.
 
 Survey and consent wording are internal pilot drafts, not recruitment-approved
-instruments. Assistance generation remains reserved for a later ticket, and the
-assistant panel stays neutral. Birthday edits now evaluate deterministic,
-versioned signals and record candidate decisions and selection reservations.
-Selection is distinct from generation and exposure; actual display cooldowns
-are supported by the public engine without fabricating display records. Earlier
+instruments. All three tasks evaluate deterministic, versioned signals and record
+candidate decisions, selection reservations, generation requests and actual
+suggestion displays separately. Suggestions appear as popups requiring explicit
+acknowledgement or dismissal. Open supervisor tools and enable **Show AI issue
+scores on main page** to inspect scoring without requesting advice. See the
+[issue eligibility state reference](docs/provider.md#issue-eligibility-states).
+Earlier
 scaffold sessions without implemented task data are preserved if they cannot
 be safely recovered; no silent migration changes their assignment or timer.
 

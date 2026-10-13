@@ -64,6 +64,37 @@ history. Acknowledgement/dismissal are explicit responses; silence and later edi
 do not imply ignoring or causation. Supervisor failures remain visible while
 editing/submission work.
 
+## Issue eligibility states
+
+Open supervisor tools and enable **Show AI issue scores on main page** to see
+these states. The inspector previews the current decision without requesting
+advice or recording events. It refreshes once per second and after plan edits.
+
+| State | Meaning |
+| --- | --- |
+| **Eligible — selected in preview** | Would be chosen if evaluated now; the preview itself does not call the model. |
+| **Eligible — lower priority** | Passes the checks, but another issue ranks higher. |
+| **Excluded — below-threshold** | Score is too low to trigger advice. |
+| **Excluded — reserved** | Chosen for an actual request, but generation has not started yet. Initial configuration loading can happen here. |
+| **Excluded — in-flight** | Request has started; awaiting a response. |
+| **Excluded — unanswered-intervention** | A popup is already waiting for acknowledgement or dismissal. |
+| **Excluded — global-cooldown** | Fewer than **30 seconds** since any advice was shown. |
+| **Excluded — signal-cooldown** | Fewer than **60 seconds** since advice for this same issue was shown. |
+| **Excluded — baseline** | AI advice is disabled for this trial. |
+| **Excluded — resolved** | The issue has been resolved. Resolved issues normally disappear from the live inspector. |
+
+Only the first applicable exclusion is shown; an issue can fail multiple checks.
+Actual requests are triggered by meaningful edits or eligible idle evaluations,
+not by refreshing the inspector. High/low thresholds are 0.40/0.75; both use the
+same cooldowns and idle schedule.
+
+In-flight lasts until the request succeeds, fails, times out or is canceled.
+The default timeout is **15 seconds**, configurable with `GENERATION_TIMEOUT_MS`;
+it is a cutoff, not a guaranteed response time. Valid, current advice is committed
+for display as soon as the response passes validation, without an added waiting
+period. Editing cancels the pending request; invalid, stale or failed responses
+produce no suggestion popup. Session generation records retain request latency.
+
 ## Verification
 
 Prompt `intervention-prompt-v2` requests one concrete edit plus a brief reason,
