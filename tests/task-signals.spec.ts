@@ -1,3 +1,4 @@
+import { evaluateIdleTrial } from '../src/experiment/interventions';
 import { expect, test } from '@playwright/test';
 import { weekendTask } from '../src/tasks/weekend';
 import { FIXED_COMMITMENTS, scheduleTask } from '../src/tasks/schedule';
@@ -42,23 +43,24 @@ for (const [sequence, task, state] of [[17, 'weekend', { ...passing, lodgingId: 
     expect(session.trials[0].task).toBe(task);
     expect(session.trials[0].condition).toBe('high');
     session = updateTaskState(session, state, { type: 'item_updated', payload: {} }, 2000);
+    session = evaluateIdleTrial(session, 62000);
     const selection = session.trials[0].agentHistory?.selections[0];
     expect(selection).toBeDefined();
-    session = beginGeneration(session, selection!.id, generation, 2000);
+    session = beginGeneration(session, selection!.id, generation, 62000);
     const request = session.trials[0].agentHistory!.requests![0];
     expect(request.request.context).toEqual(getTask(task)!.getAgentContext(state));
     expect(validRequest(request.request)).toBe(true);
     const advice = { ...generation, signalId: selection!.signal.id, type: 'suggestion', message: 'Review the selected constraint.', target: null };
-    session = finishGeneration(session, request.id, 'succeeded', advice, undefined, 3000);
+    session = finishGeneration(session, request.id, 'succeeded', advice, undefined, 63000);
     expect(session.trials[0].agentHistory!.displays).toHaveLength(1);
-    expect(finishGeneration(session, request.id, 'succeeded', advice, undefined, 4000)).toBe(session);
+    expect(finishGeneration(session, request.id, 'succeeded', advice, undefined, 64000)).toBe(session);
     expect(session.events.filter(event => event.eventType === 'agent_intervention_shown')).toHaveLength(1);
   });
 }
 test('identical optional schedules expose controlled low/high differences while all conditions share passing requirements', () => {
   const state = { blocks: [...FIXED_COMMITMENTS, { id: 'prep', kind: 'preparation' as const, day: 0, startMinute: 720, durationMinutes: 240 }] };
   const signals = scheduleTask.evaluateSignals(state);
-  const history = { now: 2000, issueStartedAt: Object.fromEntries(signals.map(signal => [signal.id, 1000])), displays: [], inFlightSignalIds: [], reservedSignalIds: [], resolvedSignalIds: [], displayCooldowns: PILOT_CONFIGURATION.displayCooldowns };
+  const history = { now: 61000, issueStartedAt: Object.fromEntries(signals.map(signal => [signal.id, 1000])), displays: [], inFlightSignalIds: [], reservedSignalIds: [], resolvedSignalIds: [], displayCooldowns: PILOT_CONFIGURATION.displayCooldowns };
   expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.baseline, history).selected).toBeNull();
   expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.low, history).selected).toBeNull();
   expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.high, history).selected?.signal.id).toBe('schedule:optional:exercise');

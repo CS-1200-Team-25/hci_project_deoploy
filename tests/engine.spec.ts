@@ -4,6 +4,26 @@ import { PILOT_CONFIGURATION } from '../src/experiment/conditions';
 import { birthdayTask } from '../src/tasks/birthday';
 import { createSession, consentToSession, revealTask, updateTaskState } from '../src/experiment/session';
 import { loadSession } from '../src/experiment/persistence';
+import { weekendTask } from '../src/tasks/weekend';
+import { scheduleTask } from '../src/tasks/schedule';
+
+test('all tasks separate high and low eagerness early and escalate unresolved issues later', () => {
+  for (const task of [birthdayTask, weekendTask, scheduleTask]) {
+    const signals = task.evaluateSignals(task.initialState);
+    const context = { now: 30000, issueStartedAt: Object.fromEntries(signals.map(signal => [signal.id, 0])),
+      displays: [], inFlightSignalIds: [], reservedSignalIds: [], resolvedSignalIds: [] };
+    const high = evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.high, context);
+    expect(high.selected).not.toBeNull();
+    expect(high.evaluations.every(item => item.finalScore < 0.75)).toBe(true);
+    expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.low, context).selected).toBeNull();
+    expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.low, { ...context, now: 120000 }).selected).not.toBeNull();
+  }
+  const signals = [{ id: 'optional', type: 'efficiency' as const, severity: .45, message: 'Optional improvement' }];
+  const context = { now: 60000, issueStartedAt: { optional: 0 }, displays: [], inFlightSignalIds: [], reservedSignalIds: [], resolvedSignalIds: [] };
+  expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.high, context).selected).not.toBeNull();
+  expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.low, { ...context, now: 120000 }).selected).toBeNull();
+  expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.low, { ...context, now: 180000 }).selected).not.toBeNull();
+});
 
 test('meaningful edits persist reservations without replay or exposure; damaged histories cannot recover', () => {
   const active = revealTask(consentToSession(createSession('E001', 5, 1000), 1000), 1000);
@@ -54,8 +74,8 @@ test('birthday signals are normalized, stable, and independent of policy; feasib
 test('identical signals follow disabled baseline and the lower high threshold without claiming a display', () => {
   const signals = [{ id: 'coverage', type: 'coverage' as const, severity: 0.6, message: 'Guest coverage is short.' }];
   const context = { now: 1000, issueStartedAt: { coverage: 1000 }, displays: [], inFlightSignalIds: [], reservedSignalIds: [], resolvedSignalIds: [] };
-  expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.baseline, context)).toMatchObject({ selected: null, evaluations: [{ threshold: null, proactive: false, rawSeverity: 0.6, recencyBonus: 0, finalScore: 0.6, triggered: false, exclusionReason: 'baseline' }] });
+  expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.baseline, context)).toMatchObject({ selected: null, evaluations: [{ threshold: null, proactive: false, rawSeverity: 0.6, recencyBonus: 0, finalScore: 0.3, triggered: false, exclusionReason: 'baseline' }] });
   expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.low, context).selected).toBeNull();
-  expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.high, context).selected?.signal.id).toBe('coverage');
-  expect([0, 29, 30, 59, 60, 119, 120, 100000].map(recencyBonus)).toEqual([0, 0, 0.05, 0.05, 0.1, 0.1, 0.2, 0.2]);
+  expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.high, { ...context, now: 31000 }).selected?.signal.id).toBe('coverage');
+  expect([0, 29, 30, 59, 60, 119, 120, 179, 180, 100000].map(recencyBonus)).toEqual([0, 0, 0.15, 0.15, 0.3, 0.3, 0.45, 0.45, 0.6, 0.6]);
 });

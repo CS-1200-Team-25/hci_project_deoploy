@@ -297,12 +297,14 @@ export function ExperimentController() {
       <GenerationStatus events={session.events} />
       {showIssueScores && <IssueScoreInspector session={session} />}
       <SupervisorDrawer key={session.phase}>
-      <label className="checkbox-label">
-        <input type="checkbox" role="switch" checked={showIssueScores}
+      <div className="score-toggle-setting">
+      <label className="score-toggle-label">
+        <span>Show AI issue scores on main page</span>
+        <input type="checkbox" role="switch" checked={showIssueScores} aria-describedby="score-toggle-help"
           onChange={event => setShowIssueScores(event.target.checked)} />
-        Show AI issue scores on main page
       </label>
-      <p>Testing only. Scores update automatically while you edit. Turn off for participant sessions.</p>
+      <p id="score-toggle-help">Testing only. Scores update automatically while you edit. Turn off for participant sessions.</p>
+      </div>
       {session.phase === 'task' && definition && <SupervisorControls session={session} onTerminate={(authorization, reason) => commit(terminateTask(sessionRef.current!, authorization, reason))} />}
       <details className="supervisor-controls">
         <summary>Supervisor storage tools</summary>

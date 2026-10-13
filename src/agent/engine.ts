@@ -14,7 +14,7 @@ export interface DecisionContext {
 
 /** Bounded pressure from how long one issue has continuously remained unresolved. */
 export function recencyBonus(seconds: number): number {
-  return seconds >= 120 ? 0.2 : seconds >= 60 ? 0.1 : seconds >= 30 ? 0.05 : 0;
+  return seconds >= 180 ? 0.6 : seconds >= 120 ? 0.45 : seconds >= 60 ? 0.3 : seconds >= 30 ? 0.15 : 0;
 }
 
 export function evaluateInterventions(
@@ -30,7 +30,7 @@ export function evaluateInterventions(
     const issueStartedAt = context.issueStartedAt[signal.id] ?? context.now;
     const unresolvedMs = Math.max(0, context.now - issueStartedAt);
     const bonus = recencyBonus(unresolvedMs / 1000);
-    const finalScore = Math.min(1, signal.severity + bonus);
+    const finalScore = Math.min(1, signal.severity * 0.5 + bonus);
     let exclusionReason: string | null = null;
     if (!policy.proactive) exclusionReason = 'baseline';
     else if (context.hasUnansweredIntervention) exclusionReason = 'unanswered-intervention';

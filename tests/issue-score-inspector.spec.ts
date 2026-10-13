@@ -11,7 +11,7 @@ test('read-only preview uses severity, recency and disabled/low/high policies ac
     { id: 'games', optionId: 'party-games', quantity: 1, startMinute: 840 },
     { id: 'craft', optionId: 'craft-workshop', quantity: 1, startMinute: 885 },
   ] };
-  for (const [index, threshold, excluded] of [[1, null, 'baseline'], [3, .75, 'below-threshold'], [5, .4, null]] as const) {
+  for (const [index, threshold, excluded] of [[1, null, 'baseline'], [3, .75, 'below-threshold'], [5, .4, 'below-threshold']] as const) {
     let session = updateTaskState(revealTask(consentToSession(createSession('SCORE', index, 1000), 1000), 1000),
       state, { type: 'item_added', payload: {} }, 1000);
     for (const selection of session.trials[0].agentHistory?.selections ?? []) {
@@ -20,10 +20,10 @@ test('read-only preview uses severity, recency and disabled/low/high policies ac
     const before = JSON.stringify(session);
     expect(inspectIssueScores(session, 1000)!.evaluations).toMatchObject([{
       signalId: 'birthday:coverage:food', rawSeverity: .6, recencyBonus: 0,
-      finalScore: .6, threshold, exclusionReason: excluded,
+      finalScore: .3, threshold, exclusionReason: excluded,
     }]);
     expect(inspectIssueScores(session, 121000)!.evaluations[0]).toMatchObject({
-      rawSeverity: .6, recencyBonus: .2, finalScore: .8,
+      rawSeverity: .6, recencyBonus: .45, finalScore: .75,
       exclusionReason: threshold === null ? 'baseline' : null,
     });
     expect(JSON.stringify(session)).toBe(before);
@@ -80,12 +80,12 @@ test('supervisor sees score fields and baseline exclusion while inspection leave
   const food = page.locator('.issue-score-list li').filter({ has: page.getByRole('heading', { name: 'birthday:missing:food', exact: true }) });
   await expect(food).toContainText('Severity0.850');
   await expect(food).toContainText('Recency bonus0.000');
-  await expect(food).toContainText('Final score0.850');
+  await expect(food).toContainText('Final score0.425');
   await expect(food).toContainText('Excluded — baseline');
   await page.clock.runFor(120000);
 
-  await expect(food).toContainText('Recency bonus0.200');
-  await expect(food).toContainText('Final score1.000');
+  await expect(food).toContainText('Recency bonus0.450');
+  await expect(food).toContainText('Final score0.875');
   expect(await page.evaluate(() => localStorage.getItem('planning-pilot-session-v1'))).toBe(before);
   await page.getByRole('button', { name: 'Open supervisor tools' }).click();
   await expect(page.getByText('Supervisor storage tools', { exact: true })).toBeVisible();

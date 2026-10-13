@@ -113,14 +113,16 @@ item/pair IDs. A valid activity schedule's largest gap of at least90 minutes
 scores .35 × gap/180 (optional efficiency). All scores clamp to[0,1]. Stable
 category IDs remain unchanged across revisions; pair IDs sort item IDs.
 
-Policy version3 disables baseline explicitly; low/high thresholds are .75/.4.
+Policy version4 disables baseline explicitly; low/high thresholds are .75/.4.
 Meaningful committed edits evaluate across all tasks. Visible active tasks also
 evaluate after30 seconds without an evaluation, using the same policy and
 generation path without changing plan revisions. Baseline, pending requests and
 reserved selections skip idle checks. Mount/reload waits a fresh30 seconds;
 hidden tabs skip checks. Reveal, unchanged edits and reload do not immediately
 evaluate or replay requests. Recency uses each stable issue ID's continuous unresolved
-age:0 below30 seconds, .05 at30, .1 at60 and .2 at120, then remains bounded.
+age:0 below30 seconds, .15 at30, .30 at60, .45 at120 and .60 at180, then remains bounded.
+Final score is min(1, raw severity * .5 + time bonus), reducing initial severity
+weight and letting unresolved age drive escalation.
 Initial issues start at task reveal; new issues start on the committed edit that
 introduces them. An issue disappearing from the evaluator clears its timer; if
 it returns, its timer starts at zero. Severity changes for the same unresolved
@@ -184,7 +186,7 @@ cannot confirm that a file was saved. Failure events flag compromised retention;
 Supervisor storage tools offer downloads throughout the participant flow.
 
 
-All-task signal configuration `pilot-5` / `planning-signals-v2` keeps the
+All-task signal configuration `pilot-6` / `planning-signals-v2` keeps the
 birthday rules above and adds condition-independent weekend and schedule
 signals. The evaluator never changes the validator or reads condition metadata.
 Generation context includes the current plan, fixed constraints and applicable
