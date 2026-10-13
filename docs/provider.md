@@ -126,3 +126,11 @@ latency. Check model availability and provider service health, and compare an
 available alternative Gemini model with the same key. Do not share credentials
 or authorization headers when reporting results. Controlled tests verify request
 format and lifecycle behavior; they cannot guarantee live Gemini latency.
+
+Generation failures retain the stable error code and include diagnostics with
+provider/model, failure stage and elapsedMs. Upstream HTTP failures include
+upstreamStatus and Gemini error status/message when available. Messages are
+bounded, the configured key is redacted, and URLs are removed. Raw upstream
+bodies, headers and exception messages are never returned. Transport errors
+include recognized cause codes; timeouts include timeoutMs. Participant warnings
+remain generic; Postman and retained response records expose these details.

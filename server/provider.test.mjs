@@ -146,3 +146,28 @@ test('Gemini credential precedence preserves legacy aliases without leaking keys
 test('loopback Gemini endpoints still require a key', async () => fixture({ env: {}, baseUrl: 'http://127.0.0.1:9999/v1beta', fetchImpl: () => { throw Error('must not call'); } }, async ({ post }) => {
   assert.equal((await post()).status, 503);
 }));
+
+test('upstream rejection exposes actionable Gemini details and redacts credentials and URLs', async () => fixture({ apiKey: 'secret-key', fetchImpl: async () => Response.json({ error: { status: 'INVALID_ARGUMENT', message: 'thinkingBudget is unsupported; secret-key at https://example.com/?key=secret-key' }, headers: { authorization: 'secret-key' } }, { status: 400 }) }, async ({ post }) => {
+  const response = await post();
+  assert.equal(response.status, 502);
+  const body = await response.json();
+  assert.equal(body.error, 'provider-error');
+  assert.equal(body.diagnostics.upstreamStatus, 400);
+  assert.equal(body.diagnostics.providerStatus, 'INVALID_ARGUMENT');
+  assert.match(body.diagnostics.message, /thinkingBudget is unsupported/);
+  assert.equal(JSON.stringify(body).includes('secret-key'), false);
+  assert.equal(JSON.stringify(body).includes('https://example.com'), false);
+}));
+
+test('non-JSON upstream errors retain status without echoing raw body', async () => fixture({ apiKey: 'test', fetchImpl: async () => new Response('private proxy body', { status: 503 }) }, async ({ post }) => {
+  const body = await (await post()).json();
+  assert.equal(body.diagnostics.upstreamStatus, 503);
+  assert.equal(body.diagnostics.message, undefined);
+}));
+
+test('transport failures expose safe cause codes without raw exception messages', async () => fixture({ apiKey: 'test', fetchImpl: async () => { throw new Error('private endpoint or credential', { cause: { code: 'ENOTFOUND' } }); } }, async ({ post }) => {
+  const body = await (await post()).json();
+  assert.equal(body.diagnostics.stage, 'transport');
+  assert.equal(body.diagnostics.transportCode, 'ENOTFOUND');
+  assert.equal(JSON.stringify(body).includes('private endpoint'), false);
+}));

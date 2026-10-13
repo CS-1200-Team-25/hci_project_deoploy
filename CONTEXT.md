@@ -154,7 +154,9 @@ Generation permits one pending request per trial. Every meaningful edit cancels
 its prior revision; completion, termination and reload also end pending requests.
 Late responses cannot display. Responses are validated against selection and
 configuration, then current revision, unresolved signal and display cooldowns
-are rechecked. Failures release reservations and log explicit outcomes without
+are rechecked. Failures include bounded diagnostic details (upstream status/message, failure stage,
+elapsed time and recognized transport causes), with the configured key and URLs
+redacted. Participant warnings remain generic. Failures release reservations and log explicit outcomes without
 fallback advice. Actual display alone updates cooldowns and survey eligibility.
 Selections, requests, responses and actual shown text are separate retained
 records. Reload restores shown history without creating another exposure or
