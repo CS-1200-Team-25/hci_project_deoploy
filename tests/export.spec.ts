@@ -37,6 +37,13 @@ test('supervisor downloads an incomplete recovered session without deleting save
   expect(document.trialMetrics[0]).toMatchObject({ elapsedMs: 90000, successfulCompletionMs: null, selectionCount: 0, displayCount: 0 });
   expect(document.session.configuration.conditions.baseline).toEqual({ proactive: false, threshold: null });
   expect(document.materials.birthday.catalog.find((option: { id: string }) => option.id === 'pizza')).toBeTruthy();
+  expect(document.materials.sequences).toHaveLength(36);
+  expect(document.materials.conditions.baseline).toEqual({ proactive: false, threshold: null });
+  expect(document.materials.engine.formula).toContain('rawSeverity');
+  expect(document.materials.engine.recencyBonusThresholds).toHaveLength(5);
+  expect(document.materials.signals.birthday.missingFood.severity).toBe(0.85);
+  expect(document.materials.weekend.locations).toEqual(['station', 'museum', 'park', 'harbor']);
+  expect(document.materials.schedule.editableKinds).toEqual(['preparation', 'meal', 'rest', 'exercise', 'buffer']);
   expect(document.session.supervisorAccess).toBeUndefined();
   expect(new Set(document.session.events.map((event: { id: string }) => event.id)).size).toBe(document.session.events.length);
   expect(await page.evaluate(() => localStorage.getItem('planning-pilot-session-v1'))).not.toBeNull();
