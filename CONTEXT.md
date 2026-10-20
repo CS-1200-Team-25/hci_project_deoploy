@@ -56,14 +56,21 @@ Unsuccessful durations never populate successful completion time. Ended trials
 cannot be edited or completed again. Both outcomes require post-task answers
 before the controller reveals the next assigned scenario and starts its timer.
 
-Survey instrument version1 is a fixed pilot draft, not a recruitment-approved
+Survey instrument version2 is a fixed pilot draft, not a recruitment-approved
 instrument. Helpfulness uses1=not at all helpful and7=extremely helpful;
 interruption uses1=not at all interruptive and7=extremely interruptive. Both
 responses are required. Either response can instead be the distinct string
 `not-applicable` when that trial has no recorded assistance-display event.
 Drafts persist with ordered events. Submitted responses cannot be changed or
-submitted twice. The final instrument requires a trial experience by task/order
-or explicit no preference, plus an optional explanation. It reveals no condition
+submitted twice. The final instrument ranks all three trial experiences from most
+to least preferred, with drag ordering and move buttons, or an explicit no-preference
+toggle, plus an optional explanation. Initial ordering follows trial order and
+submission confirms the displayed ordering. Toggling no preference retains the
+draft ordering for later editing but submits `noPreference: true` and
+`rankedTrialIds: null`; otherwise `rankedTrialIds` contains all three unique trial
+IDs in preference order. Drafts, responses and explanations persist and export.
+Prior single-choice survey versions are preserved and rejected on recovery
+rather than converted into an invented ranking. The instrument reveals no condition
 names. Completion requires all three ended trials and their required surveys.
 Recovery validates rating ranges, display-linked eligibility and phase gates.
 

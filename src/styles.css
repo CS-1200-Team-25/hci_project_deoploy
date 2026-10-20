@@ -102,4 +102,18 @@ select { font: inherit; padding: 10px; border: 1px solid #b9c5d5; border-radius:
 
 .issue-score-panel { margin-top: 24px; padding: 20px; border: 1px solid #9aabc1; border-radius: 12px; background: #fbfcfe; }
 .issue-score-panel > p { margin-top: 12px; }
+.preference-toggle { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+.preference-toggle input { appearance: none; width: 44px; height: 26px; padding: 3px; margin: 0; border-radius: 999px; background: #7b8ba4; cursor: pointer; flex-shrink: 0; }
+.preference-toggle input::before { content: ''; display: block; width: 18px; height: 18px; border-radius: 50%; background: white; }
+.preference-toggle input:checked { background: #334e76; }
+.preference-toggle input:checked::before { transform: translateX(18px); }
+.trial-ranking { display: grid; gap: 12px; list-style: none; padding: 0; margin: 0; }
+.trial-ranking li { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid #b9c5d5; border-radius: 8px; background: #f5f7fa; }
+.trial-ranking li[draggable="true"] { cursor: grab; }
+.trial-ranking-disabled { opacity: .65; }
+.trial-rank { font-weight: 700; }
+.trial-ranking-title { flex: 1; min-width: 0; }
+.trial-ranking-actions { display: flex; gap: 4px; }
+.trial-ranking-actions button { padding: 10px; min-width: 40px; min-height: 44px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 .issue-score-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; }

@@ -81,7 +81,7 @@ for (const endSchedule of ['successful', 'unsuccessful'] as const) {
       await page.getByRole('button', { name: 'End unsuccessful trial' }).click();
     }
     await survey(page, true);
-    await page.getByLabel('Preferred trial experience').selectOption('no-preference');
+    await page.getByRole('switch', { name: 'No preference' }).check();
     await page.getByRole('button', { name: 'Submit final survey' }).click();
     await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible();
     await page.reload();

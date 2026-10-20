@@ -6,6 +6,7 @@ import type { ExperimentTask } from '../src/types/task';
 import { recordEvent } from '../src/experiment/logger';
 import { birthdayTask } from '../src/tasks/birthday';
 import { loadSession, saveSession } from '../src/experiment/persistence';
+import { openSupervisorTools } from './supervisor-tools';
 
 test('not-applicable answers are rejected after displayed assistance and damaged survey recovery is preserved', () => {
   const active = revealTask(consentToSession(createSession('Q004', 1, 1000), 1500), 2000);
@@ -28,7 +29,7 @@ test('not-applicable answers are rejected after displayed assistance and damaged
     { ...ended, postTaskSurveyDrafts: { [ended.trials[0].id]: { helpfulness: 8 } } },
     { ...ended, postTaskSurveys: { [ended.trials[0].id]: { helpfulness: 4, interruption: 1, submittedAt: 3200 } } },
     { ...ended, phase: 'final-survey' as const },
-    { ...ended, finalSurveyDraft: { preferredTrialId: 'unknown-trial', explanation: '' } },
+    { ...ended, finalSurveyDraft: { rankedTrialIds: ['unknown-trial'], noPreference: false, explanation: '' } },
   ];
   for (const session of invalid) {
     let serialized: string | null = null;
@@ -40,7 +41,7 @@ test('not-applicable answers are rejected after displayed assistance and damaged
   }
 });
 
-test('all three real tasks, persisted survey drafts and final trial preference reach a recovered completion', async ({ page }) => {
+test('dragged and keyboard-ranked trial preferences persist through the toggle, recovery and JSON download', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('Participant ID').fill('Q003');
   await page.getByLabel('Supervisor access code').fill('research-only');
@@ -92,8 +93,24 @@ test('all three real tasks, persisted survey drafts and final trial preference r
   await page.getByLabel('Interruption rating').selectOption('1');
   await page.getByRole('button', { name: 'Submit post-task survey' }).click();
   await expect(page.getByRole('heading', { name: 'Final survey' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Submit final survey' })).toBeDisabled();
-  await page.getByLabel('Preferred trial experience').selectOption({ label: 'Trial 2 · Weekend-itinerary planning' });
+  await expect(page.getByRole('button', { name: 'Submit final survey' })).toBeEnabled();
+  const rows = page.getByRole('list', { name: 'Rank the trial experiences' }).getByRole('listitem');
+  await rows.filter({ hasText: 'Trial 3' }).dragTo(rows.filter({ hasText: 'Trial 1' }));
+  await expect(rows.nth(0)).toContainText('Trial 3');
+  await rows.filter({ hasText: 'Trial 2' }).dragTo(rows.filter({ hasText: 'Trial 3' }));
+  await expect(rows.nth(0)).toContainText('Trial 2');
+  const moveUp = page.getByRole('button', { name: /^Move Trial 1 .* up$/ });
+  await moveUp.focus();
+  await page.keyboard.press('Enter');
+  await expect(rows.nth(1)).toContainText('Trial 1');
+  await page.getByRole('switch', { name: 'No preference' }).check();
+  await expect(rows.nth(0)).toHaveAttribute('draggable', 'false');
+  await expect(rows.getByRole('button').first()).toBeDisabled();
+  await page.reload();
+  await expect(page.getByRole('switch', { name: 'No preference' })).toBeChecked();
+  await page.getByRole('switch', { name: 'No preference' }).uncheck();
+  await expect(rows.nth(0)).toContainText('Trial 2');
+  await expect(rows.nth(1)).toContainText('Trial 1');
   await page.getByLabel('Optional explanation').fill('I liked planning the trip.');
   await page.reload();
   await expect(page.getByLabel('Optional explanation')).toHaveValue('I liked planning the trip.');
@@ -107,7 +124,21 @@ test('all three real tasks, persisted survey drafts and final trial preference r
     return (await import(path)).loadSession();
   });
   expect(session.trials.map((trial: { status: string }) => trial.status)).toEqual(['completed', 'completed', 'completed']);
-  expect(session.finalSurvey.preferredTrialId).toBe(session.trials[1].id);
+  expect(session.finalSurvey.rankedTrialIds).toEqual([session.trials[1].id, session.trials[0].id, session.trials[2].id]);
+  expect(session.finalSurvey.noPreference).toBe(false);
+  await openSupervisorTools(page);
+  await page.getByText('Supervisor storage tools', { exact: true }).click();
+  const downloading = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download session JSON' }).click();
+  const stream = await (await downloading).createReadStream();
+  let json = '';
+  for await (const chunk of stream!) json += chunk.toString();
+  const exported = JSON.parse(json);
+  expect(exported.session.finalSurvey).toMatchObject({
+    rankedTrialIds: [session.trials[1].id, session.trials[0].id, session.trials[2].id],
+    noPreference: false, explanation: 'I liked planning the trip.',
+  });
+  expect(exported.materials.survey).toMatchObject({ version: 'pilot-surveys-v2', preference: { order: 'most-to-least-preferred' } });
   expect(session.postTaskSurveys[session.trials[0].id].helpfulness).toBe('not-applicable');
   expect(session.postTaskSurveys[session.trials[0].id].interruption).toBe('not-applicable');
   expect(session.events.filter((event: { eventType: string }) => event.eventType === 'post_task_survey_submitted')).toHaveLength(3);
@@ -153,12 +184,30 @@ test('three adapter trials including unsuccessful termination require surveys be
   }
   expect(session.phase).toBe('final-survey');
   expect(session.trials.map((trial) => trial.outcome)).toEqual(['successful', 'unsuccessful', 'successful']);
-  expect(() => submitFinalSurvey(session, 5500)).toThrow(/preference/);
-  session = setFinalSurveyDraft(session, { preferredTrialId: null, explanation: '' }, 5600);
+  const ids = session.trials.map(trial => trial.id);
+  for (const ranking of [[], ids.slice(0, 2), [ids[0], ids[0], ids[2]], [ids[0], ids[1], 'unknown']]) {
+    expect(() => setFinalSurveyDraft(session, { rankedTrialIds: ranking, noPreference: false, explanation: '' }, 5500)).toThrow(/Rank/);
+    expect(() => submitFinalSurvey({ ...session, finalSurveyDraft: { rankedTrialIds: ranking, noPreference: false, explanation: '' } }, 5500)).toThrow(/ranking/);
+    const serialized = JSON.stringify({ ...session, finalSurveyDraft: { rankedTrialIds: ranking, noPreference: false, explanation: '' } });
+    const storage = { getItem: () => serialized, setItem: () => { throw new Error('Must not overwrite'); } };
+    expect(() => loadSession(storage)).toThrow(/incompatible or damaged/);
+  }
+  session = setFinalSurveyDraft(session, { rankedTrialIds: ids, noPreference: true, explanation: '' }, 5600);
   const completed = submitFinalSurvey(session, 5700);
   expect(completed.phase).toBe('complete');
-  expect(completed.finalSurvey).toEqual({ preferredTrialId: null, explanation: '', submittedAt: 5700 });
+  expect(completed.finalSurvey).toEqual({ rankedTrialIds: null, noPreference: true, explanation: '', submittedAt: 5700 });
   expect(submitFinalSurvey(completed, 5800)).toBe(completed);
   expect(completed.events.filter((event) => event.eventType === 'post_task_survey_submitted')).toHaveLength(3);
   expect(completed.events.filter((event) => event.eventType === 'final_survey_submitted')).toHaveLength(1);
+  for (const broken of [
+    { ...completed, configuration: { ...completed.configuration, surveyVersion: 'pilot-surveys-v1' } },
+    { ...completed, finalSurvey: { ...completed.finalSurvey!, rankedTrialIds: ids } },
+    { ...completed, finalSurvey: { ...completed.finalSurvey!, noPreference: false } },
+  ]) {
+    let serialized = JSON.stringify(broken);
+    const original = serialized;
+    const storage = { getItem: () => serialized, setItem: (_key: string, value: string) => { serialized = value; } };
+    expect(() => loadSession(storage)).toThrow(/incompatible or damaged/);
+    expect(serialized).toBe(original);
+  }
 });

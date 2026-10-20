@@ -34,22 +34,27 @@ export function submitPostTaskSurvey(session: ExperimentSession, now = Date.now(
   return startAssignedTask(next, now, resolve);
 }
 
+function validTrialRanking(session: ExperimentSession, ranking: unknown): ranking is string[] {
+  return Array.isArray(ranking) && ranking.length === session.trials.length
+    && new Set(ranking).size === session.trials.length
+    && ranking.every(id => session.trials.some(trial => trial.id === id));
+}
 export function validFinalDraft(session: ExperimentSession, draft: FinalSurveyDraft) {
-  return typeof draft.explanation === 'string' && (draft.preferredTrialId === undefined || draft.preferredTrialId === null
-    || session.trials.some((trial) => trial.id === draft.preferredTrialId));
+  return typeof draft.explanation === 'string' && typeof draft.noPreference === 'boolean'
+    && validTrialRanking(session, draft.rankedTrialIds);
 }
 export function setFinalSurveyDraft(session: ExperimentSession, draft: FinalSurveyDraft, now = Date.now()): ExperimentSession {
   if (session.phase !== 'final-survey' || session.finalSurvey) return session;
-  if (!validFinalDraft(session, draft)) throw new Error('Choose a trial experience or no preference.');
+  if (!validFinalDraft(session, draft)) throw new Error('Rank every trial exactly once or choose no preference.');
   if (JSON.stringify(session.finalSurveyDraft) === JSON.stringify(draft)) return session;
-  return recordEvent({ ...session, finalSurveyDraft: { ...draft } }, 'final_survey_draft_updated', { answers: draft }, now);
+  return recordEvent({ ...session, finalSurveyDraft: { ...draft, rankedTrialIds: [...draft.rankedTrialIds] } }, 'final_survey_draft_updated', { answers: draft }, now);
 }
 export function submitFinalSurvey(session: ExperimentSession, now = Date.now()): ExperimentSession {
   if (session.phase !== 'final-survey' || session.finalSurvey) return session;
   const draft = session.finalSurveyDraft;
-  if (draft.preferredTrialId === undefined || !validFinalDraft(session, draft)) throw new Error('A trial preference or no preference is required.');
+  if (!validFinalDraft(session, draft)) throw new Error('A complete trial ranking or no preference is required.');
   if (session.trials.some((trial) => !session.postTaskSurveys[trial.id])) throw new Error('Every post-task survey is required.');
-  const survey = { preferredTrialId: draft.preferredTrialId, explanation: draft.explanation, submittedAt: now };
+  const survey = { rankedTrialIds: draft.noPreference ? null : [...draft.rankedTrialIds], noPreference: draft.noPreference, explanation: draft.explanation, submittedAt: now };
   let next = recordEvent({ ...session, phase: 'complete', finalSurvey: survey, completedAt: now }, 'final_survey_submitted', { answers: survey }, now);
   next = recordEvent(next, 'session_completed', {}, now);
   return next;
@@ -75,6 +80,7 @@ export function validSurveyState(session: ExperimentSession) {
   if (!session.trials.every((trial, index) => Boolean(session.postTaskSurveys[trial.id]) === (needsAll || index < session.currentTrialIndex))) return false;
   if (session.phase !== 'complete') return session.finalSurvey === undefined && session.completedAt === undefined;
   const final = session.finalSurvey;
-  return isSurveyRecord(final) && validFinalDraft(session, final) && final.preferredTrialId !== undefined
+  return isSurveyRecord(final) && typeof final.explanation === 'string' && typeof final.noPreference === 'boolean'
+    && (final.noPreference ? final.rankedTrialIds === null : validTrialRanking(session, final.rankedTrialIds))
     && Number.isFinite(final.submittedAt) && session.completedAt === final.submittedAt;
 }

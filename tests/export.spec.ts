@@ -92,7 +92,7 @@ test('completed export preserves unsuccessful durations, successful timing and r
     await page.getByLabel('Interruption rating').selectOption('not-applicable');
     await page.getByRole('button', { name: 'Submit post-task survey' }).click();
   }
-  await page.getByLabel('Preferred trial experience').selectOption('no-preference');
+  await page.getByRole('switch', { name: 'No preference' }).check();
   await page.getByLabel('Optional explanation').fill('Pilot export check');
   await page.getByRole('button', { name: 'Submit final survey' }).click();
   const document = await downloadSession(page);
@@ -107,7 +107,7 @@ test('completed export preserves unsuccessful durations, successful timing and r
   expect(Object.values(document.session.postTaskSurveys).every((survey: any) => survey.helpfulness === 'not-applicable')).toBe(true);
   expect(Object.values(document.session.postTaskSurveys).every((survey: any) => survey.interruption === 'not-applicable')).toBe(true);
   expect(document.materials.survey.interruption.noDisplayAnswer).toBe('not-applicable');
-  expect(document.session.finalSurvey).toMatchObject({ preferredTrialId: null, explanation: 'Pilot export check' });
+  expect(document.session.finalSurvey).toMatchObject({ rankedTrialIds: null, noPreference: true, explanation: 'Pilot export check' });
   expect(document.retention.compromised).toBe(false);
 });
 

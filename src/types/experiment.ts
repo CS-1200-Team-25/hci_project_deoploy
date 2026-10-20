@@ -77,10 +77,12 @@ export interface PostTaskSurvey {
   submittedAt: number;
 }
 export type PostTaskSurveyDraft = Partial<Pick<PostTaskSurvey, 'helpfulness' | 'interruption'>>;
-export interface FinalSurveyDraft { preferredTrialId?: string | null; explanation: string }
+export interface FinalSurveyDraft { rankedTrialIds: string[]; noPreference: boolean; explanation: string }
 
 export interface FinalSurvey {
-  preferredTrialId: string | null;
+  /** Most preferred first; null only for an explicit no-preference response. */
+  rankedTrialIds: string[] | null;
+  noPreference: boolean;
   explanation: string;
   submittedAt: number;
 }

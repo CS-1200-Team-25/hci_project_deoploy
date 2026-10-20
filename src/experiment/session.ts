@@ -37,7 +37,7 @@ export function createSession(participantId: string, sequenceIndex: number, now 
     lastSavedAt: now,
     postTaskSurveys: {},
     postTaskSurveyDrafts: {},
-    finalSurveyDraft: { explanation: '' },
+    finalSurveyDraft: { rankedTrialIds: sequence.trials.map((_, index) => `${sessionId}-trial-${index + 1}`), noPreference: false, explanation: '' },
   }, 'session_started', { sequenceIndex, sequenceId: sequence.id }, now);
 }
 
