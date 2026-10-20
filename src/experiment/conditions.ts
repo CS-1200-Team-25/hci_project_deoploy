@@ -10,7 +10,7 @@ export const PILOT_CONFIGURATION: PilotConfiguration = {
   surveyVersion: 'pilot-surveys-v1',
   conditions: {
     baseline: { proactive: false, threshold: null },
-    low: { proactive: true, threshold: 0.75 },
-    high: { proactive: true, threshold: 0.4 },
+    low: { proactive: true, threshold: 0.6 },
+    high: { proactive: true, threshold: 0.3 },
   },
 };
