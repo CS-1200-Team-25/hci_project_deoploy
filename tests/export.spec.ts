@@ -44,6 +44,8 @@ test('supervisor downloads an incomplete recovered session without deleting save
   expect(document.materials.engine.formula).toContain('rawSeverity');
   expect(document.materials.engine.recencyBonusThresholds).toHaveLength(5);
   expect(document.materials.signals.birthday.missingFood.severity).toBe(0.85);
+  expect(document.materials.signals.birthday).toMatchObject({ missingDecoration: { severity: .85 }, budgetPressureFloor: 160 });
+  expect(document.materials.signals.schedule).toMatchObject({ minimumPreparationDays: 3, dailyPreparationLimit: { severity: .9, maximumMinutes: 90 } });
   expect(document.materials.weekend.locations).toEqual(['station', 'museum', 'park', 'harbor']);
   expect(document.materials.schedule.editableKinds).toEqual(['preparation', 'meal', 'rest', 'exercise', 'buffer']);
   expect(document.session.supervisorAccess).toBeUndefined();

@@ -62,9 +62,9 @@ for (const endSchedule of ['successful', 'unsuccessful'] as const) {
     expect(requests).toHaveLength(priorCalls);
     await page.getByRole('button', { name: 'Complete task' }).click();
     await survey(page, true);
-    await page.getByRole('button', { name: 'Add preparation block' }).click();
     await page.clock.fastForward(30000);
     await expect(page.getByText('Review schedule constraints.', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Add preparation block' }).click();
     await page.getByRole('button', { name: 'Acknowledge' }).click();
     await page.getByRole('group', { name: 'preparation block 1' }).getByLabel('Duration (minutes)').fill('90');
     await page.clock.runFor(10000);
@@ -153,7 +153,6 @@ for (const [sequence, task, firstEdit, nextEdit] of [
     });
     if (firstEdit === 'lodging') await page.getByLabel('Saturday-night lodging').selectOption('guesthouse');
     else await page.getByRole('button', { name: 'Add preparation block' }).click();
-    if (task === 'schedule') await page.clock.fastForward(30000);
     await expect.poll(() => calls).toBe(1);
     await page.evaluate(() => { Storage.prototype.setItem = function () { throw new DOMException('Full', 'QuotaExceededError'); }; });
     if (nextEdit === 'transport') await page.getByLabel('Transport option').selectOption('transit-pass');

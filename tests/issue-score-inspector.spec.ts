@@ -11,7 +11,7 @@ test('read-only preview uses severity, recency and disabled/low/high policies ac
     { id: 'games', optionId: 'trivia', quantity: 1, startMinute: 915 },
     { id: 'decoration', optionId: 'banners', quantity: 1 },
   ] };
-  for (const [index, threshold, excluded] of [[1, null, 'baseline'], [3, .75, 'below-threshold'], [5, .4, 'below-threshold']] as const) {
+  for (const [index, threshold, excluded] of [[1, null, 'baseline'], [3, .6, 'below-threshold'], [5, .3, null]] as const) {
     let session = updateTaskState(revealTask(consentToSession(createSession('SCORE', index, 1000), 1000), 1000),
       state, { type: 'item_added', payload: {} }, 1000);
     for (const selection of session.trials[0].agentHistory?.selections ?? []) {

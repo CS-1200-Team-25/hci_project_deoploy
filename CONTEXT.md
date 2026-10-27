@@ -136,7 +136,7 @@ item/pair IDs. A valid activity schedule's largest gap of at least90 minutes
 scores .35 × gap/180 (optional efficiency). All scores clamp to[0,1]. Stable
 category IDs remain unchanged across revisions; pair IDs sort item IDs.
 
-Policy version4 disables baseline explicitly; low/high thresholds are .75/.4.
+Policy version4 disables baseline explicitly; low/high thresholds are .6/.3.
 Meaningful committed edits evaluate across all tasks. Visible active tasks also
 evaluate after30 seconds without an evaluation, using the same policy and
 generation path without changing plan revisions. Baseline, pending requests and

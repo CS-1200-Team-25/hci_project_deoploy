@@ -14,15 +14,15 @@ test('all tasks separate high and low eagerness early and escalate unresolved is
       displays: [], inFlightSignalIds: [], reservedSignalIds: [], resolvedSignalIds: [] };
     const high = evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.high, context);
     expect(high.selected).not.toBeNull();
-    expect(high.evaluations.every(item => item.finalScore < 0.75)).toBe(true);
+    expect(high.evaluations.every(item => item.finalScore < PILOT_CONFIGURATION.conditions.low.threshold)).toBe(true);
     expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.low, context).selected).toBeNull();
     expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.low, { ...context, now: 120000 }).selected).not.toBeNull();
   }
   const signals = [{ id: 'optional', type: 'efficiency' as const, severity: .45, message: 'Optional improvement' }];
   const context = { now: 60000, issueStartedAt: { optional: 0 }, displays: [], inFlightSignalIds: [], reservedSignalIds: [], resolvedSignalIds: [] };
   expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.high, context).selected).not.toBeNull();
-  expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.low, { ...context, now: 120000 }).selected).toBeNull();
-  expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.low, { ...context, now: 180000 }).selected).not.toBeNull();
+  expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.low, context).selected).toBeNull();
+  expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.low, { ...context, now: 120000 }).selected).not.toBeNull();
 });
 
 test('meaningful edits persist reservations without replay or exposure; damaged histories cannot recover', () => {
