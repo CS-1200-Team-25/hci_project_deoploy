@@ -132,9 +132,26 @@ try {
     await fill('Harbor tour booking 4', 'Start time', '10:45');
     await submit(true);
   });
-  await observe('schedule-minimum', 25, async ({ add, fill, submit }) => {
+  await observe('schedule-former-shortcut', 25, async ({ add, fill, select, submit }) => {
     await add('preparation block');
     await fill('preparation block 1', 'Duration (minutes)', '240');
+    await submit(false);
+    await fill('preparation block 1', 'Duration (minutes)', '90');
+    await add('preparation block');
+    await select('preparation block 2', 'Day', '1');
+    await fill('preparation block 2', 'Duration (minutes)', '90');
+    await add('preparation block');
+    await select('preparation block 3', 'Day', '2');
+    await submit(true);
+  });
+  await observe('schedule-distributed', 25, async ({ add, fill, select, submit }) => {
+    await add('preparation block');
+    await fill('preparation block 1', 'Duration (minutes)', '90');
+    await add('preparation block');
+    await select('preparation block 2', 'Day', '1');
+    await fill('preparation block 2', 'Duration (minutes)', '90');
+    await add('preparation block');
+    await select('preparation block 3', 'Day', '2');
     await submit(true);
   });
   await observe('schedule-split', 25, async ({ add, select, submit }) => {
@@ -153,7 +170,13 @@ try {
     await select('preparation block 1', 'Day', '4');
     await fill('preparation block 1', 'Start time', '14:00');
     await submit(false);
-    await fill('preparation block 1', 'Start time', '13:00');
+    await fill('preparation block 1', 'Start time', '16:00');
+    await fill('preparation block 1', 'Duration (minutes)', '60');
+    await add('preparation block');
+    await fill('preparation block 2', 'Duration (minutes)', '90');
+    await add('preparation block');
+    await select('preparation block 3', 'Day', '1');
+    await fill('preparation block 3', 'Duration (minutes)', '90');
     await submit(true);
   });
 

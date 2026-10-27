@@ -23,11 +23,14 @@ The $200 cap keeps every catalog option feasible,
 but requires a cheaper food choice when selecting the craft workshop and water:
 sandwich platters total $198 with banners; wraps total $203 and fail.
 This is a pilot difficulty adjustment, not demonstrated task equivalence.
-An agent-run baseline browser observation found a four-edit birthday solution,
-10–11-edit weekend examples and a two-edit weekly-schedule solution. Nine
-walkthroughs confirmed corrections and passing paths; structural difficulty
-remains uneven, with weekly scheduling easiest and weekend hardest.
-See `docs/task-difficulty-observation.md` for scope, evidence and reproduction.
+The initial agent-run baseline observation found a four-edit birthday solution,
+10–11-edit weekend examples and a two-edit weekly-schedule solution.
+Weekly scheduling now closes that shortcut with distributed preparation.
+The follow-up observation found seven-edit weekly solutions between the
+birthday and weekend examples. These counts describe scripted paths, not
+human completion times or proven equivalence. See
+`docs/task-difficulty-observation.md` for the initial evidence and
+`docs/weekly-schedule-difficulty-observation.md` for the follow-up.
 Scenario version4 records these requirements; earlier sessions are preserved
 and rejected on recovery rather than revalidated under different rules.
 Weekend planning now supports lodging
@@ -47,16 +50,23 @@ overlap each other or overnight lodging. Exact travel/window/budget boundaries
 pass. Feasible backtracking is optional, never a hidden passing requirement.
 The explicit weekend scenario is included in scenario version2.
 
-Schedule fixture version1 preserves Monday/Wednesday/Friday09:00–11:00 classes
+Schedule fixture version2 preserves Monday/Wednesday/Friday09:00–11:00 classes
 and Tuesday/Thursday13:00–17:00 work. Blocks use day indices0–4 and local whole
 minutes; durations are positive whole minutes and all blocks fit08:00–20:00.
 Intervals include their start and exclude their end, allowing adjacent blocks.
 At least240 non-overlapping preparation minutes must occur before Friday17:00.
+Preparation before that deadline must span at least three different weekdays.
+Total scheduled preparation on each day is limited to90 minutes across all
+preparation blocks, including any time after the deadline. Splitting blocks
+on the same day cannot bypass the cap. The workspace shows counted minutes,
+qualifying days and each weekday's total preparation minutes.
 The portion of a preparation block before the deadline counts, even when its
 remaining time falls later. Optional blocks are not required; selected optional
 blocks still obey daily bounds and overlap rules. Fixed commitments are
 read-only and their exact presence is enforced by runtime edit/recovery guards.
-Scenario version3 records these explicit boundary/duration semantics.
+Scenario version5 records the new distribution and daily-cap requirements;
+`pilot-8` / `planning-signals-v4` rejects older saved configurations while
+preserving their data, rather than changing their completion requirements.
 
 The shared lifecycle records every submission and validation result. Failed
 submissions show blocking requirements in a dismissible toast,
@@ -199,7 +209,7 @@ cannot confirm that a file was saved. Failure events flag compromised retention;
 Supervisor storage tools offer downloads throughout the participant flow.
 
 
-All-task signal configuration `pilot-7` / `planning-signals-v3` uses the
+All-task signal configuration `pilot-8` / `planning-signals-v4` uses the
 birthday rules above and adds condition-independent weekend and schedule
 signals. The evaluator never changes the validator or reads condition metadata.
 Generation context includes the current plan, fixed constraints and applicable
@@ -239,12 +249,17 @@ cover every intersecting pair; metadata retains bookings or travel minutes.
 Returning to a location after visiting another location produces optional daily
 backtracking advice. Exact travel and opening boundaries produce no conflict.
 
-Schedule identities are `schedule:preparation`, `schedule:bounds:<blockId>`,
+Schedule identities are `schedule:preparation`, `schedule:preparation-days`,
+`schedule:preparation-limit:<day>`, `schedule:bounds:<blockId>`,
 `schedule:deadline:<blockId>`,
 `schedule:overlap:<sortedIdPair>`,
 `schedule:back-to-back:<fromId>:<toId>` and
 `schedule:optional:<meal|rest|exercise>`.
 Preparation severity is .4 + .45 times the missing fraction of 240 minutes.
+Missing preparation days score .4 + .4 times the missing fraction of three
+qualifying days; only valid non-overlapping preparation before the deadline
+contributes. Each daily preparation total above90 minutes scores .9 and
+retains its weekday and planned/maximum minutes in signal metadata.
 For assistance coverage, only valid, non-overlapping preparation minutes before
 Friday17:00 count. Friday preparation extending after the deadline also has a
 separate deadline signal. Missing optional kinds mean none anywhere in the week;

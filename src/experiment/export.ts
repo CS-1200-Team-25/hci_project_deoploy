@@ -5,6 +5,7 @@ import { BIRTHDAY_REQUIREMENTS } from '../tasks/birthday-rules';
 import { WEEKEND_ACTIVITIES, WEEKEND_LODGING, WEEKEND_TRANSPORT, WEEKEND_TRAVEL, WEEKEND_BOUNDARIES, WEEKEND_CATALOG_VERSION, WEEKEND_LOCATIONS } from '../tasks/weekend';
 import { FIXED_COMMITMENTS, SCHEDULE_VERSION, WEEKDAYS, EDITABLE_SCHEDULE_KINDS } from '../tasks/schedule';
 import { experimentSequences } from './sequences';
+import { SCHEDULE_REQUIREMENTS } from '../tasks/schedule-rules';
 
 /** Keep raw session fields so future surveys and generation records remain lossless. */
 export function createSessionExport(session: ExperimentSession, now = Date.now()) {
@@ -81,6 +82,10 @@ export function createSessionExport(session: ExperimentSession, now = Date.now()
         schedule: {
           preparationFormula: '0.4 + 0.45 * (240 - prepared) / 240',
           preparationType: 'coverage',
+          preparationDaysFormula: '0.4 + 0.4 * (requiredDays - preparedDays) / requiredDays',
+          preparationDaysType: 'coverage',
+          minimumPreparationDays: SCHEDULE_REQUIREMENTS.minimumPreparationDays,
+          dailyPreparationLimit: { severity: 0.9, type: 'schedule-conflict', maximumMinutes: SCHEDULE_REQUIREMENTS.maxPreparationMinutesPerDay },
           boundsViolation: { severity: 0.9, type: 'schedule-conflict' },
           deadlineViolation: { severity: 0.9, type: 'deadline' },
           overlapViolation: { severity: 0.9, type: 'schedule-conflict' },
@@ -91,7 +96,7 @@ export function createSessionExport(session: ExperimentSession, now = Date.now()
       },
       birthday: { version: BIRTHDAY_CATALOG_VERSION, catalog: structuredClone(BIRTHDAY_CATALOG), ...BIRTHDAY_REQUIREMENTS },
       weekend: { version: WEEKEND_CATALOG_VERSION, locations: [...WEEKEND_LOCATIONS], activities: structuredClone(WEEKEND_ACTIVITIES), lodging: structuredClone(WEEKEND_LODGING), transport: structuredClone(WEEKEND_TRANSPORT), travel: structuredClone(WEEKEND_TRAVEL), boundaries: structuredClone(WEEKEND_BOUNDARIES), budget: 500, activitiesPerDay: 2 },
-      schedule: { version: SCHEDULE_VERSION, weekdays: [...WEEKDAYS], editableKinds: [...EDITABLE_SCHEDULE_KINDS], fixedCommitments: structuredClone(FIXED_COMMITMENTS), startMinute: 480, endMinute: 1200, preparationMinutes: 240, deadline: { day: 4, minute: 1020 }, intervals: 'start-inclusive-end-exclusive' },
+      schedule: { version: SCHEDULE_VERSION, weekdays: [...WEEKDAYS], editableKinds: [...EDITABLE_SCHEDULE_KINDS], fixedCommitments: structuredClone(FIXED_COMMITMENTS), ...structuredClone(SCHEDULE_REQUIREMENTS), dailyPreparationLimitScope: 'All scheduled preparation minutes on each day, including time after the deadline.', intervals: 'start-inclusive-end-exclusive' },
       survey: { version: session.configuration.surveyVersion, helpfulness: { question: 'How helpful was the assistant during this task?', minimum: 1, maximum: 7, minimumLabel: 'Not at all helpful', maximumLabel: 'Extremely helpful', noDisplayAnswer: 'not-applicable' }, interruption: { question: 'How much did the assistant interrupt your planning during this task?', minimum: 1, maximum: 7, minimumLabel: 'Not at all interruptive', maximumLabel: 'Extremely interruptive', noDisplayAnswer: 'not-applicable' }, preference: { question: 'Which trial experience did you prefer overall?', noPreference: null } },
     },
   };

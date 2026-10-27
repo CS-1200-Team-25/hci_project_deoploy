@@ -52,7 +52,7 @@ test('a participant action does not overwrite an externally edited session', asy
   expect(saved.phase).toBe('welcome');
 });
 
-test('the previous birthday scenario version blocks recovery and preserves the original saved data', async ({ page }) => {
+test('the previous scenario version blocks recovery and preserves the original saved data', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('Participant ID').fill('P008');
   await page.getByLabel('Supervisor access code').fill('research-only');
@@ -61,7 +61,7 @@ test('the previous birthday scenario version blocks recovery and preserves the o
     const modulePath = '/src/experiment/persistence.ts';
     const { loadSession, saveSession, SESSION_STORAGE_KEY } = await import(modulePath);
     const session = loadSession();
-    session.configuration.scenarioVersion = 'pilot-scenarios-v3';
+    session.configuration.scenarioVersion = 'pilot-scenarios-v4';
     saveSession(session);
     return { serialized: localStorage.getItem(SESSION_STORAGE_KEY), key: SESSION_STORAGE_KEY };
   });
