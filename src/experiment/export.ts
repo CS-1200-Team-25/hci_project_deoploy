@@ -1,6 +1,7 @@
 import type { ExperimentSession } from '../types/experiment';
 import { PILOT_SCENARIOS } from './scenarios';
 import { BIRTHDAY_CATALOG, BIRTHDAY_CATALOG_VERSION } from '../tasks/birthday';
+import { BIRTHDAY_REQUIREMENTS } from '../tasks/birthday-rules';
 import { WEEKEND_ACTIVITIES, WEEKEND_LODGING, WEEKEND_TRANSPORT, WEEKEND_TRAVEL, WEEKEND_BOUNDARIES, WEEKEND_CATALOG_VERSION, WEEKEND_LOCATIONS } from '../tasks/weekend';
 import { FIXED_COMMITMENTS, SCHEDULE_VERSION, WEEKDAYS, EDITABLE_SCHEDULE_KINDS } from '../tasks/schedule';
 import { experimentSequences } from './sequences';
@@ -55,10 +56,11 @@ export function createSessionExport(session: ExperimentSession, now = Date.now()
           missingFood: { severity: 0.85, type: 'missing-category' },
           missingDrink: { severity: 0.85, type: 'missing-category' },
           missingActivity: { severity: 0.80, type: 'missing-category' },
+          missingDecoration: { severity: 0.85, type: 'missing-category' },
           coverageFormula: '0.4 + 0.4 * missingFraction',
-          budgetPressureFormula: '0.6 * (cost - 240) / 60 when 240 < cost <= 300',
-          budgetExcessFormula: '0.8 + 0.2 * (cost - 300) / 300 when cost > 300, capped at 1',
-          budgetPressureFloor: 240,
+          budgetPressureFormula: '0.6 * (cost - 160) / 40 when 160 < cost <= 200',
+          budgetExcessFormula: '0.8 + 0.2 * (cost - 200) / 200 when cost > 200, capped at 1',
+          budgetPressureFloor: 160,
           windowViolation: { severity: 0.9, type: 'schedule-conflict' },
           overlapViolation: { severity: 0.9, type: 'schedule-conflict' },
           scheduleGapFormula: '0.35 * gap / 180 when gap >= 90 minutes',
@@ -87,7 +89,7 @@ export function createSessionExport(session: ExperimentSession, now = Date.now()
           optionalMissing: { severity: 0.45, type: 'missing-category', optional: true, kinds: ['meal', 'rest', 'exercise'] },
         },
       },
-      birthday: { version: BIRTHDAY_CATALOG_VERSION, catalog: structuredClone(BIRTHDAY_CATALOG), guests: 12, budget: 300, startMinute: 840, endMinute: 1020 },
+      birthday: { version: BIRTHDAY_CATALOG_VERSION, catalog: structuredClone(BIRTHDAY_CATALOG), ...BIRTHDAY_REQUIREMENTS },
       weekend: { version: WEEKEND_CATALOG_VERSION, locations: [...WEEKEND_LOCATIONS], activities: structuredClone(WEEKEND_ACTIVITIES), lodging: structuredClone(WEEKEND_LODGING), transport: structuredClone(WEEKEND_TRANSPORT), travel: structuredClone(WEEKEND_TRAVEL), boundaries: structuredClone(WEEKEND_BOUNDARIES), budget: 500, activitiesPerDay: 2 },
       schedule: { version: SCHEDULE_VERSION, weekdays: [...WEEKDAYS], editableKinds: [...EDITABLE_SCHEDULE_KINDS], fixedCommitments: structuredClone(FIXED_COMMITMENTS), startMinute: 480, endMinute: 1200, preparationMinutes: 240, deadline: { day: 4, minute: 1020 }, intervals: 'start-inclusive-end-exclusive' },
       survey: { version: session.configuration.surveyVersion, helpfulness: { question: 'How helpful was the assistant during this task?', minimum: 1, maximum: 7, minimumLabel: 'Not at all helpful', maximumLabel: 'Extremely helpful', noDisplayAnswer: 'not-applicable' }, interruption: { question: 'How much did the assistant interrupt your planning during this task?', minimum: 1, maximum: 7, minimumLabel: 'Not at all interruptive', maximumLabel: 'Extremely interruptive', noDisplayAnswer: 'not-applicable' }, preference: { question: 'Which trial experience did you prefer overall?', noPreference: null } },

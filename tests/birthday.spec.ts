@@ -12,6 +12,7 @@ test('damaged final outcomes cannot recover or overwrite preserved study records
     { id: 'food', optionId: 'wrap-buffet', quantity: 1 },
     { id: 'drink', optionId: 'water-pack', quantity: 1 },
     { id: 'activity', optionId: 'trivia', quantity: 1, startMinute: 840 },
+    { id: 'decoration', optionId: 'banners', quantity: 1 },
   ] }, { type: 'item_added', payload: {} }, 2000);
   const completed = submitTask(edited, 3000);
   const supervised = await configureSupervisorAccess(edited, 'research-only');
@@ -44,6 +45,7 @@ test('zero-duration passing submission freezes the plan and subsequent edits or 
     { id: 'food', optionId: 'wrap-buffet', quantity: 1 },
     { id: 'drink', optionId: 'water-pack', quantity: 1 },
     { id: 'activity', optionId: 'trivia', quantity: 1, startMinute: 840 },
+    { id: 'decoration', optionId: 'banners', quantity: 1 },
   ] };
   const edited = updateTaskState(active, plan, { type: 'item_added', payload: { items: plan.items } }, 2000);
   const completed = submitTask(edited, 2000);
@@ -124,6 +126,7 @@ test('failed submission continues timing and a corrected passing submission free
   await page.getByRole('button', { name: 'Add Wrap buffet', exact: true }).click();
   await page.getByRole('button', { name: 'Add Water pack', exact: true }).click();
   await page.getByRole('button', { name: 'Add Trivia', exact: true }).click();
+  await page.getByRole('button', { name: 'Add Banners', exact: true }).click();
   await page.clock.runFor(40000);
   await page.getByRole('button', { name: 'Complete task' }).dblclick();
   await expect(page.getByRole('heading', { name: 'Task submitted successfully' })).toBeVisible();
@@ -147,7 +150,7 @@ test('failed submission continues timing and a corrected passing submission free
   expect(trial.submissionAttempts).toHaveLength(3);
   expect(trial.submissionAttempts[0].validation.isComplete).toBe(false);
   expect(trial.finalValidation.isComplete).toBe(true);
-  expect(trial.finalValidation.warnings).toHaveLength(1);
+  expect(trial.finalValidation.warnings).toHaveLength(0);
   expect(trial.finalPlan).toEqual(trial.taskState);
   expect(session.events.filter((event: { eventType: string }) => event.eventType === 'task_completed')).toHaveLength(1);
 });
@@ -173,6 +176,7 @@ test('a narrow screen shows coverage and party-window errors in a toast and a co
   await page.getByRole('button', { name: 'Add Sandwich platter', exact: true }).click();
   await page.getByRole('group', { name: 'Sandwich platter item 2' }).getByLabel('Quantity').fill('2');
   await page.getByRole('button', { name: 'Add Water pack', exact: true }).click();
+  await page.getByRole('button', { name: 'Add Banners', exact: true }).click();
   await page.getByRole('button', { name: 'Complete task' }).click();
   await expect(page.getByRole('heading', { name: 'Task submitted successfully' })).toBeVisible();
   await expect(toast).toHaveCount(0);
@@ -210,24 +214,76 @@ test('a catalog birthday plan covers all guests and fits the budget and party wi
     { id: 'food', optionId: 'sandwich-platter', quantity: 2 },
     { id: 'drink', optionId: 'water-pack', quantity: 1 },
     { id: 'activity', optionId: 'party-games', quantity: 1, startMinute: 840 },
+    { id: 'decoration', optionId: 'banners', quantity: 1 },
   ] });
-  expect(result).toEqual({ isComplete: true, errors: [], warnings: ['Decorations are optional; none are included.'] });
+  expect(result).toEqual({ isComplete: true, errors: [], warnings: [] });
 });
 
-test('a second passing plan can exactly use the budget and end at 17:00 with adjacent activities', () => {
+test('a second passing plan can exactly use the budget and end at 17:00', () => {
   const state = { items: [
-    { id: 'pizza', optionId: 'pizza', quantity: 2 },
-    { id: 'sandwich', optionId: 'sandwich-platter', quantity: 1 },
+    { id: 'food', optionId: 'wrap-buffet', quantity: 1 },
     { id: 'drinks', optionId: 'lemonade-jug', quantity: 5 },
-    { id: 'games', optionId: 'party-games', quantity: 1, startMinute: 840 },
-    { id: 'craft', optionId: 'craft-workshop', quantity: 1, startMinute: 885 },
     { id: 'trivia', optionId: 'trivia', quantity: 1, startMinute: 990 },
+    { id: 'decoration', optionId: 'banners', quantity: 1 },
   ] };
-  expect(birthdayTask.getAgentContext(state).summary).toMatchObject({ totalCost: 300, foodServings: 14, drinkServings: 30, plan: state, constraints: { guests: 12, budget: 300 } });
+  expect(birthdayTask.getAgentContext(state).summary).toMatchObject({ totalCost: 200, foodServings: 12, drinkServings: 30, plan: state, constraints: { guests: 12, budget: 200, requiredDecorations: 1, decorationsOptional: false } });
   expect(birthdayTask.validate(state).isComplete).toBe(true);
-  expect(birthdayTask.validate({ items: [...state.items, { id: 'extra', optionId: 'banners', quantity: 1 }] }).errors).toContain('Keep total cost at or below $300.');
-  expect(birthdayTask.validate({ items: state.items.map((item) => item.id === 'craft' ? { ...item, startMinute: 884 } : item) }).errors).toContain('Party games and Craft workshop overlap.');
+  expect(birthdayTask.validate({ items: [...state.items, { id: 'extra', optionId: 'banners', quantity: 1 }] }).errors).toContain('Keep total cost at or below $200.');
   expect(birthdayTask.validate({ items: state.items.map((item) => item.id === 'trivia' ? { ...item, startMinute: 991 } : item) }).errors).toContain('Schedule Trivia entirely within Saturday 14:00–17:00.');
+});
+
+test('multiple optional activities may be adjacent but cannot overlap', () => {
+  const state = { items: [
+    { id: 'food', optionId: 'sandwich-platter', quantity: 2 },
+    { id: 'drink', optionId: 'water-pack', quantity: 1 },
+    { id: 'games', optionId: 'party-games', quantity: 1, startMinute: 840 },
+    { id: 'trivia', optionId: 'trivia', quantity: 1, startMinute: 885 },
+    { id: 'decoration', optionId: 'banners', quantity: 1 },
+  ] };
+  expect(birthdayTask.validate(state).isComplete).toBe(true);
+  expect(birthdayTask.validate({ items: state.items.map((item) => item.id === 'trivia' ? { ...item, startMinute: 884 } : item) }).errors).toEqual(['Party games and Trivia overlap.']);
+});
+
+test('decorations are required and expensive combinations need a cheaper food choice', async ({ page }) => {
+  await startBirthday(page);
+  await expect(page.getByText(/within a \$200 budget/)).toBeVisible();
+  await page.getByRole('button', { name: 'Add Wrap buffet', exact: true }).click();
+  await page.getByRole('button', { name: 'Add Water pack', exact: true }).click();
+  await page.getByRole('button', { name: 'Add Craft workshop', exact: true }).click();
+  await page.getByRole('button', { name: 'Complete task' }).click();
+  await expect(page.getByRole('alert')).toContainText('Include at least one decoration.');
+  await page.getByRole('button', { name: 'Add Banners', exact: true }).click();
+  await expect(page.getByText('Total cost: $203')).toBeVisible();
+  await page.getByRole('button', { name: 'Complete task' }).click();
+  await expect(page.getByRole('alert')).toContainText('Keep total cost at or below $200.');
+  await page.getByRole('group', { name: 'Wrap buffet item 1' }).getByRole('button', { name: 'Remove' }).click();
+  await page.getByRole('button', { name: 'Add Sandwich platter', exact: true }).click();
+  await page.getByRole('group', { name: /Sandwich platter item/ }).getByLabel('Quantity').fill('2');
+  await expect(page.getByText('Total cost: $198')).toBeVisible();
+  await page.getByRole('button', { name: 'Complete task' }).click();
+  await expect(page.getByRole('heading', { name: 'Task submitted successfully' })).toBeVisible();
+});
+
+test('missing decorations emit a stable blocking signal that resolves when banners are added', () => {
+  const state = { items: [
+    { id: 'food', optionId: 'wrap-buffet', quantity: 1 },
+    { id: 'drink', optionId: 'water-pack', quantity: 1 },
+    { id: 'activity', optionId: 'trivia', quantity: 1, startMinute: 915 },
+  ] };
+  expect(birthdayTask.validate(state).errors).toEqual(['Include at least one decoration.']);
+  expect(birthdayTask.evaluateSignals(state)).toMatchObject([{ id: 'birthday:missing:decoration', type: 'missing-category', severity: .85 }]);
+  const decorated = { items: [...state.items, { id: 'decoration', optionId: 'banners', quantity: 1 }] };
+  expect(birthdayTask.validate(decorated).isComplete).toBe(true);
+  expect(birthdayTask.evaluateSignals(decorated)).toEqual([]);
+  expect(birthdayTask.validate({ items: [...state.items, { id: 'decoration', optionId: 'banners', quantity: 0 }] }).isComplete).toBe(false);
+});
+
+test('budget advice uses the new 80 percent pressure band and excess severity', () => {
+  for (const [quantity, severity] of [[8, undefined], [9, .3], [10, .6], [11, .82], [100, 1]] as const) {
+    const signal = birthdayTask.evaluateSignals({ items: [{ id: 'decoration', optionId: 'banners', quantity }] }).find(candidate => candidate.id === 'birthday:budget');
+    if (severity === undefined) expect(signal).toBeUndefined();
+    else expect(signal).toMatchObject({ severity, message: 'Check the plan against the $200 budget.' });
+  }
 });
 
 test('missing coverage, outside-party activities and invalid quantities cannot pass', () => {
@@ -238,7 +294,7 @@ test('missing coverage, outside-party activities and invalid quantities cannot p
   ] });
   expect(result.isComplete).toBe(false);
   expect(result.errors).toEqual([
-    'Schedule Party games entirely within Saturday 14:00–17:00.', 'Include at least 12 food servings.', 'Include at least 12 drink servings.',
+    'Schedule Party games entirely within Saturday 14:00–17:00.', 'Include at least 12 food servings.', 'Include at least 12 drink servings.', 'Include at least one decoration.',
   ]);
   expect(birthdayTask.validate({ items: [{ id: 'food', optionId: 'pizza', quantity: 0 }] }).errors).toContain('Use a positive whole quantity for Pizza; activities are scheduled individually.');
 });

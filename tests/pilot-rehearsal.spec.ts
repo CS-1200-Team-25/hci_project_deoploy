@@ -31,6 +31,7 @@ for (const endSchedule of ['successful', 'unsuccessful'] as const) {
     await page.getByRole('button', { name: 'Add Wrap buffet', exact: true }).click();
     await page.getByRole('button', { name: 'Add Water pack', exact: true }).click();
     await page.getByRole('button', { name: 'Add Trivia', exact: true }).click();
+    await page.getByRole('button', { name: 'Add Banners', exact: true }).click();
     await page.getByRole('button', { name: 'Add Craft workshop', exact: true }).click();
     const craft = page.getByRole('group', { name: /Craft workshop/ });
     await craft.getByLabel('Start time').fill('15:00');
@@ -100,7 +101,7 @@ for (const endSchedule of ['successful', 'unsuccessful'] as const) {
     expect(session.trials[2].successfulCompletionMs ?? null).toBe(endSchedule === 'successful' ? 40000 : null);
     expect(exported.trialMetrics.map((trial: any) => trial.displayCount)).toEqual([0, 1, 1]);
     expect(session.configuration.conditions.baseline).toEqual({ proactive: false, threshold: null });
-    expect(session.configuration.signalVersion).toBe('planning-signals-v2');
+    expect(session.configuration.signalVersion).toBe('planning-signals-v3');
     expect(events.slice(0, priorEvents.length)).toEqual(priorEvents);
     expect(new Set(events.map((event: any) => event.id)).size).toBe(events.length);
     expect(events.map((event: any) => event.sequence)).toEqual(events.map((_event: any, index: number) => index + 1));

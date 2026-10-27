@@ -17,8 +17,15 @@ instructions, three task/post-task-survey pairs, final survey and completion.
 Birthday planning
 now supports catalog selection, quantity edits, scheduled activity moves and
 removal. Its public task contract validates 12 food servings, 12 drink servings,
-one activity, the $300 budget and activities within 14:00–17:00 without overlap.
-Decorations are an optional improvement. Weekend planning now supports lodging
+one activity, at least one decoration, the $200 budget and activities within
+14:00–17:00 without overlap. Extra activities remain optional.
+The $200 cap keeps every catalog option feasible,
+but requires a cheaper food choice when selecting the craft workshop and water:
+sandwich platters total $198 with banners; wraps total $203 and fail.
+This is a pilot difficulty adjustment, not demonstrated task equivalence.
+Scenario version4 records these requirements; earlier sessions are preserved
+and rejected on recovery rather than revalidated under different rules.
+Weekend planning now supports lodging
 and transport selections and activity add/remove/edit/day/time moves. Weekly
 scheduling includes immutable fixed commitments plus editable preparation and
 optional meal/rest/exercise/buffer blocks. All three workspaces now use the same
@@ -104,10 +111,11 @@ Baseline's disabled threshold is serialized explicitly as `null` alongside
 recruitment. See `ARCHITECTURE.md` and GitHub issues #3 and #4 for the full
 contract and issues #4–#9 for the implemented slices.
 
-Birthday signal version1 is independent of condition. Missing food/drink have
-severity .85 and missing activity .8. Present food/drink with fewer than12
-servings score .4 + .4 × missing fraction. Budget pressure above$240 through$300
-scores .6 × (cost−240)/60; excess scores .8 + .2 × (cost−300)/300, capped at1.
+Birthday signals in planning-signals-v3 are independent of condition.
+Missing food, drinks and decorations score .85; missing activity scores .8.
+Present food/drink with fewer than12 servings score .4 + .4 × missing fraction.
+Budget pressure above$160 through$200 scores .6 × (cost−160)/40;
+excess scores .8 + .2 × (cost−200)/200, capped at1.
 Activities outside14:00–17:00 and each overlapping pair score .9, with stable
 item/pair IDs. A valid activity schedule's largest gap of at least90 minutes
 scores .35 × gap/180 (optional efficiency). All scores clamp to[0,1]. Stable
@@ -186,7 +194,7 @@ cannot confirm that a file was saved. Failure events flag compromised retention;
 Supervisor storage tools offer downloads throughout the participant flow.
 
 
-All-task signal configuration `pilot-6` / `planning-signals-v2` keeps the
+All-task signal configuration `pilot-7` / `planning-signals-v3` uses the
 birthday rules above and adds condition-independent weekend and schedule
 signals. The evaluator never changes the validator or reads condition metadata.
 Generation context includes the current plan, fixed constraints and applicable

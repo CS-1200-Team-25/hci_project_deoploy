@@ -256,7 +256,7 @@ Prevent repeated messages about the same unresolved signal from firing continuou
 
 Each evaluator uses transparent heuristics:
 
-- Birthday: budget exceeded/pressure, missing food or drinks, guest coverage, missing activities, schedule gaps.
+- Birthday: budget exceeded/pressure, missing food or drinks, guest coverage, missing activities or required decorations, schedule gaps.
 - Weekend: budget pressure, overlapping or impossible travel/opening hours, missing lodging/transport, inefficient route.
 - Schedule: conflicts, deadline risk, insufficient preparation time, missing meals/rest/exercise, unrealistic back-to-back blocks.
 

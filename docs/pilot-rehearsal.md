@@ -1,7 +1,7 @@
 # Supervised pilot rehearsal
 
 Use a supervised desktop with pseudonymous rehearsal IDs. These materials and
-`pilot-5` / `planning-signals-v2` / `pilot-policy-v3` are proposed defaults for research-team review.
+`pilot-7` / `planning-signals-v3` / `pilot-policy-v4` are proposed defaults for research-team review.
 They do not establish recruitment approval, task equivalence or statistical
 power. Consent, survey wording, catalogs, policies and deployment configuration
 need review and a recorded freeze before recruitment.
@@ -24,6 +24,13 @@ need review and a recorded freeze before recruitment.
       selected evaluations or requests, as exposure.
 
 ## Participant flow and feasibility (pending human observation)
+
+- [ ] Confirm birthday instructions require food and drink for 12 guests, one
+      activity and decorations within $200. Verify missing decorations block
+      submission. Wraps, water, craft workshop and banners total $203 and fail;
+      replacing wraps with two sandwich platters totals $198 and passes. Compare
+      observed completion times and corrections with weekend and weekly tasks
+      before deciding whether difficulty is comparable.
 
 - [ ] Create session, consent and reveal task using only keyboard (Tab, Shift+Tab,
       Enter, Space, arrow keys). Check focus visibility/order, catalog buttons,

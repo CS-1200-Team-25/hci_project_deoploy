@@ -15,7 +15,7 @@ test('advice context describes available catalog options and executable edits in
       expect.stringMatching(/add.*remove/i), expect.stringMatching(/quantity/i), expect.stringMatching(/start time/i),
     ]),
   });
-  expect(birthday.constraints).toMatchObject({ guests: 12, budget: 300, startMinute: 840, endMinute: 1020 });
+  expect(birthday.constraints).toMatchObject({ guests: 12, budget: 200, startMinute: 840, endMinute: 1020, requiredDecorations: 1, decorationsOptional: false });
 
   const weekend = weekendTask.getAgentContext(weekendTask.initialState).summary;
   expect(weekend.activities).toEqual(expect.arrayContaining([expect.objectContaining({ label: 'Park walk', cost: 0, openingWindows: expect.any(Array) })]));
