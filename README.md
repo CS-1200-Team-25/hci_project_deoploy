@@ -6,6 +6,13 @@ shared instructions, supports all three timed planning tasks and required survey
 after a reload. `ARCHITECTURE.md` defines the full study contract; `CONTEXT.md`
 describes the implemented domain and remaining work.
 
+## Deployment
+
+See [Vercel + Render deployment instructions](instructions.md). `vercel.json`
+builds the frontend and proxies `/api/*` using Vercel's `PROVIDER_URL` environment
+variable. `render.yaml` provisions the Node provider; its Gemini key and exact
+frontend `APP_ORIGIN` are entered in Render, not committed to Git.
+
 ## Development
 
 Use Node.js 22.12 or newer.
