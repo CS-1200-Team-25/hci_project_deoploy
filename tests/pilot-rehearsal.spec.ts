@@ -71,7 +71,12 @@ for (const endSchedule of ['successful', 'unsuccessful'] as const) {
     if (endSchedule === 'successful') {
       const prep = page.getByRole('group', { name: 'preparation block 1' });
       await prep.getByLabel('Start time').fill('12:00');
-      await prep.getByLabel('Duration (minutes)').fill('240');
+      await page.getByRole('button', { name: 'Add preparation block' }).click();
+      const tuesday = page.getByRole('group', { name: 'preparation block 2' });
+      await tuesday.getByLabel('Day').selectOption('1');
+      await tuesday.getByLabel('Duration (minutes)').fill('90');
+      await page.getByRole('button', { name: 'Add preparation block' }).click();
+      await page.getByRole('group', { name: 'preparation block 3' }).getByLabel('Day').selectOption('2');
       await page.getByRole('button', { name: 'Complete task' }).click();
     } else {
       await openSupervisorTools(page);
@@ -101,7 +106,7 @@ for (const endSchedule of ['successful', 'unsuccessful'] as const) {
     expect(session.trials[2].successfulCompletionMs ?? null).toBe(endSchedule === 'successful' ? 40000 : null);
     expect(exported.trialMetrics.map((trial: any) => trial.displayCount)).toEqual([0, 1, 1]);
     expect(session.configuration.conditions.baseline).toEqual({ proactive: false, threshold: null });
-    expect(session.configuration.signalVersion).toBe('planning-signals-v3');
+    expect(session.configuration.signalVersion).toBe('planning-signals-v4');
     expect(events.slice(0, priorEvents.length)).toEqual(priorEvents);
     expect(new Set(events.map((event: any) => event.id)).size).toBe(events.length);
     expect(events.map((event: any) => event.sequence)).toEqual(events.map((_event: any, index: number) => index + 1));

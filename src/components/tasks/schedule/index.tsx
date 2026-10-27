@@ -1,11 +1,13 @@
 import { EDITABLE_SCHEDULE_KINDS, WEEKDAYS, isFixedCommitment, scheduleSummary } from '../../../tasks/schedule';
 import type { ScheduleBlock, ScheduleKind, ScheduleState } from '../../../tasks/schedule';
 import type { TaskAction } from '../../../types/task';
+import { SCHEDULE_REQUIREMENTS } from '../../../tasks/schedule-rules';
 
 function time(minutes: number) { return `${Math.floor(minutes / 60).toString().padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}`; }
 
 export function ScheduleWorkspace({ state, onChange }: { state: ScheduleState; onChange(state: ScheduleState, action: TaskAction): void }) {
   const editable = state.blocks.filter((block) => !isFixedCommitment(block));
+  const summary = scheduleSummary(state);
   function update(block: ScheduleBlock, changes: Partial<ScheduleBlock>, type: TaskAction['type']) {
     const next = { ...block, ...changes };
     onChange({ blocks: state.blocks.map((candidate) => candidate.id === block.id ? next : candidate) }, { type, payload: { block: next, previousBlock: block } });
@@ -15,7 +17,8 @@ export function ScheduleWorkspace({ state, onChange }: { state: ScheduleState; o
     onChange({ blocks: [...state.blocks, block] }, { type: 'item_added', payload: { block } });
   }
   return <>
-    <div className="plan-summary"><p>Preparation before deadline: {scheduleSummary(state).preparationMinutesBeforeDeadline} minutes</p><p>Required: 240 minutes</p></div>
+    <div className="plan-summary"><p>Preparation before deadline: {summary.preparationMinutesBeforeDeadline} minutes</p><p>Required: {SCHEDULE_REQUIREMENTS.preparationMinutes} minutes</p><p>Preparation days before deadline: {summary.preparationDaysBeforeDeadline} (at least {SCHEDULE_REQUIREMENTS.minimumPreparationDays} required)</p></div>
+    <p>Daily preparation totals (maximum {SCHEDULE_REQUIREMENTS.maxPreparationMinutesPerDay} minutes each): {summary.dailyPreparationMinutes.map((minutes, day) => `${WEEKDAYS[day]}: ${minutes}`).join(' · ')}</p>
     <section aria-label="Fixed commitments"><h3>Fixed commitments</h3><p>These commitments stay unchanged in your plan.</p>
       <ul>{state.blocks.filter(isFixedCommitment).map((block) => <li key={block.id}>{WEEKDAYS[block.day]} {block.kind}: {time(block.startMinute)}–{time(block.startMinute + block.durationMinutes)}</li>)}</ul>
     </section>

@@ -36,7 +36,7 @@ test('advice context describes available catalog options and executable edits in
     ]),
   });
   expect(schedule.fixedCommitments).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'class-mon', label: 'Monday class', startMinute: 540, durationMinutes: 120 })]));
-  expect(schedule.constraints).toMatchObject({ preparationMinutes: 240, deadline: { day: 4, minute: 1020 } });
+  expect(schedule.constraints).toMatchObject({ preparationMinutes: 240, minimumPreparationDays: 3, maxPreparationMinutesPerDay: 90, deadline: { day: 4, minute: 1020 }, dailyPreparationLimitScope: expect.stringContaining('including time after the deadline') });
 });
 
 test('Gemini receives the action-and-reason prompt and unmodified real task options', async () => {

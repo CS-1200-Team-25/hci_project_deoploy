@@ -86,9 +86,13 @@ test('dragged and keyboard-ranked trial preferences persist through the toggle, 
   await page.getByRole('button', { name: 'Submit post-task survey' }).click();
   await page.getByRole('button', { name: 'Add preparation block' }).click();
   const preparation = page.getByRole('group', { name: 'preparation block 1' });
-  await preparation.getByLabel('Day').selectOption('4');
-  await preparation.getByLabel('Start time').fill('13:00');
-  await preparation.getByLabel('Duration (minutes)').fill('240');
+  await preparation.getByLabel('Duration (minutes)').fill('90');
+  await page.getByRole('button', { name: 'Add preparation block' }).click();
+  const tuesday = page.getByRole('group', { name: 'preparation block 2' });
+  await tuesday.getByLabel('Day').selectOption('1');
+  await tuesday.getByLabel('Duration (minutes)').fill('90');
+  await page.getByRole('button', { name: 'Add preparation block' }).click();
+  await page.getByRole('group', { name: 'preparation block 3' }).getByLabel('Day').selectOption('2');
   await page.getByRole('button', { name: 'Complete task' }).click();
   await page.getByLabel('Helpfulness rating').selectOption('not-applicable');
   await expect(page.locator('.validation-feedback')).toHaveCount(0);

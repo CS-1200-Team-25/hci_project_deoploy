@@ -1,5 +1,10 @@
 # Task difficulty observation — 27 October 2026
 
+This is the historical observation before the weekly task was tightened.
+See [the follow-up](weekly-schedule-difficulty-observation.md) for current rules
+and results. The historical runner is preserved in commit `a5430c3`; the current
+runner exercises the revised weekly requirements.
+
 The current tasks are structurally uneven. The birthday change adds a genuine
 budget tradeoff, but weekend planning still requires more coordination. Weekly
 scheduling has the easiest passing shortcut: add a preparation block at its
