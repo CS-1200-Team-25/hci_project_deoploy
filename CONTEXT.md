@@ -23,6 +23,11 @@ The $200 cap keeps every catalog option feasible,
 but requires a cheaper food choice when selecting the craft workshop and water:
 sandwich platters total $198 with banners; wraps total $203 and fail.
 This is a pilot difficulty adjustment, not demonstrated task equivalence.
+An agent-run baseline browser observation found a four-edit birthday solution,
+10–11-edit weekend examples and a two-edit weekly-schedule solution. Nine
+walkthroughs confirmed corrections and passing paths; structural difficulty
+remains uneven, with weekly scheduling easiest and weekend hardest.
+See `docs/task-difficulty-observation.md` for scope, evidence and reproduction.
 Scenario version4 records these requirements; earlier sessions are preserved
 and rejected on recovery rather than revalidated under different rules.
 Weekend planning now supports lodging
