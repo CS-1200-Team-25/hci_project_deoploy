@@ -25,6 +25,13 @@ need review and a recorded freeze before recruitment.
 
 ## Participant flow and feasibility (pending human observation)
 
+An agent-run baseline comparison of all three tasks is recorded in
+[`task-difficulty-observation.md`](task-difficulty-observation.md), with nine
+browser walkthroughs and an executable reproduction script. It found birthday
+intermediate, weekend hardest and a two-edit weekly-schedule shortcut. This
+completes the structural comparison; participant timing and perceived effort
+remain separate human observations.
+
 - [ ] Confirm birthday instructions require food and drink for 12 guests, one
       activity and decorations within $200. Verify missing decorations block
       submission. Wraps, water, craft workshop and banners total $203 and fail;
