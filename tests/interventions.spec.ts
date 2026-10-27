@@ -11,8 +11,8 @@ for (const [sequence, condition] of [[1, 'baseline'], [3, 'low'], [5, 'high']] a
     const fixture = { items: [
       { id: 'food', optionId: 'sandwich-platter', quantity: 2 },
       { id: 'drink', optionId: 'water-pack', quantity: 1 },
-      { id: 'games', optionId: 'party-games', quantity: 1, startMinute: 840 },
-      { id: 'craft', optionId: 'craft-workshop', quantity: 1, startMinute: 885 },
+      { id: 'games', optionId: 'trivia', quantity: 1, startMinute: 915 },
+      { id: 'decoration', optionId: 'banners', quantity: 1 },
     ] };
     // Public task adapter starts all policies at the same feasible state, with no selection history.
     const session = revealTask(consentToSession(createSession(`POL${sequence}`, sequence, now), now), now,
@@ -26,8 +26,8 @@ for (const [sequence, condition] of [[1, 'baseline'], [3, 'low'], [5, 'high']] a
     });
     const evaluations = records.events.filter((event: { eventType: string }) => event.eventType === 'signal_evaluated');
     expect(evaluations).toHaveLength(1);
-    expect(evaluations[0].payload).toMatchObject({ signalId: 'birthday:coverage:food', signalType: 'coverage', rawSeverity: 0.6, recencyBonus: 0, triggered: false });
-    expect(records.events.filter((event: { eventType: string }) => event.eventType === 'intervention_selected')).toHaveLength(0);
+    expect(evaluations[0].payload).toMatchObject({ signalId: 'birthday:coverage:food', signalType: 'coverage', rawSeverity: 0.6, recencyBonus: 0, triggered: condition === 'high' });
+    expect(records.events.filter((event: { eventType: string }) => event.eventType === 'intervention_selected')).toHaveLength(condition === 'high' ? 1 : 0);
     expect(records.events.filter((event: { eventType: string }) => event.eventType === 'agent_intervention_shown')).toHaveLength(0);
     await expect(page.getByRole('region', { name: 'AI Assistant' })).toHaveCount(0);
     // Remove the initializer after the initial document so recovery uses the current saved record.
@@ -47,6 +47,6 @@ for (const [sequence, condition] of [[1, 'baseline'], [3, 'low'], [5, 'high']] a
       return (await import(path)).loadSession();
     });
     expect(resolved.events.filter((event: { eventType: string }) => event.eventType === 'intervention_evaluation_summary').at(-1).payload.candidateCount).toBe(0);
-    expect(resolved.trials[0].agentHistory.selections).toHaveLength(0);
+    expect(resolved.trials[0].agentHistory.selections).toHaveLength(condition === 'high' ? 1 : 0);
   });
 }

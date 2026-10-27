@@ -15,7 +15,7 @@ test('advice context describes available catalog options and executable edits in
       expect.stringMatching(/add.*remove/i), expect.stringMatching(/quantity/i), expect.stringMatching(/start time/i),
     ]),
   });
-  expect(birthday.constraints).toMatchObject({ guests: 12, budget: 300, startMinute: 840, endMinute: 1020 });
+  expect(birthday.constraints).toMatchObject({ guests: 12, budget: 200, startMinute: 840, endMinute: 1020, requiredDecorations: 1, decorationsOptional: false });
 
   const weekend = weekendTask.getAgentContext(weekendTask.initialState).summary;
   expect(weekend.activities).toEqual(expect.arrayContaining([expect.objectContaining({ label: 'Park walk', cost: 0, openingWindows: expect.any(Array) })]));
@@ -36,7 +36,7 @@ test('advice context describes available catalog options and executable edits in
     ]),
   });
   expect(schedule.fixedCommitments).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'class-mon', label: 'Monday class', startMinute: 540, durationMinutes: 120 })]));
-  expect(schedule.constraints).toMatchObject({ preparationMinutes: 240, deadline: { day: 4, minute: 1020 } });
+  expect(schedule.constraints).toMatchObject({ preparationMinutes: 240, minimumPreparationDays: 3, maxPreparationMinutesPerDay: 90, deadline: { day: 4, minute: 1020 }, dailyPreparationLimitScope: expect.stringContaining('including time after the deadline') });
 });
 
 test('Gemini receives the action-and-reason prompt and unmodified real task options', async () => {

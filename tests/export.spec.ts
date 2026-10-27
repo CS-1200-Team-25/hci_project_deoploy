@@ -36,12 +36,16 @@ test('supervisor downloads an incomplete recovered session without deleting save
   expect(document.session.events.slice(0, original.events.length)).toEqual(original.events);
   expect(document.trialMetrics[0]).toMatchObject({ elapsedMs: 90000, successfulCompletionMs: null, selectionCount: 0, displayCount: 0 });
   expect(document.session.configuration.conditions.baseline).toEqual({ proactive: false, threshold: null });
+  expect(document.materials.birthday).toMatchObject({ budget: 200, requiredDecorations: 1 });
+  expect(document.materials.schedule).toMatchObject({ version: 'schedule-fixture-v2', preparationMinutes: 240, minimumPreparationDays: 3, maxPreparationMinutesPerDay: 90, dailyPreparationLimitScope: expect.stringContaining('including time after the deadline') });
   expect(document.materials.birthday.catalog.find((option: { id: string }) => option.id === 'pizza')).toBeTruthy();
   expect(document.materials.sequences).toHaveLength(36);
   expect(document.materials.conditions.baseline).toEqual({ proactive: false, threshold: null });
   expect(document.materials.engine.formula).toContain('rawSeverity');
   expect(document.materials.engine.recencyBonusThresholds).toHaveLength(5);
   expect(document.materials.signals.birthday.missingFood.severity).toBe(0.85);
+  expect(document.materials.signals.birthday).toMatchObject({ missingDecoration: { severity: .85 }, budgetPressureFloor: 160 });
+  expect(document.materials.signals.schedule).toMatchObject({ minimumPreparationDays: 3, dailyPreparationLimit: { severity: .9, maximumMinutes: 90 } });
   expect(document.materials.weekend.locations).toEqual(['station', 'museum', 'park', 'harbor']);
   expect(document.materials.schedule.editableKinds).toEqual(['preparation', 'meal', 'rest', 'exercise', 'buffer']);
   expect(document.session.supervisorAccess).toBeUndefined();
@@ -83,6 +87,7 @@ test('completed export preserves unsuccessful durations, successful timing and r
   await page.getByRole('button', { name: 'Add Wrap buffet' }).click();
   await page.getByRole('button', { name: 'Add Water pack' }).click();
   await page.getByRole('button', { name: 'Add Party games' }).click();
+  await page.getByRole('button', { name: 'Add Banners' }).click();
   await page.clock.runFor(20000);
   await page.getByRole('button', { name: 'Complete task' }).click();
   for (let index = 0; index < 3; index++) {
@@ -109,7 +114,7 @@ test('completed export preserves unsuccessful durations, successful timing and r
     { trialId: document.session.trials[1].id, outcome: 'unsuccessful', elapsedMs: 10000, successfulCompletionMs: null, selectionCount: 0, displayCount: 0 },
     { trialId: document.session.trials[2].id, outcome: 'unsuccessful', elapsedMs: 10000, successfulCompletionMs: null, selectionCount: 0, displayCount: 0 },
   ]);
-  expect(document.session.trials[0].finalPlan.items).toHaveLength(3);
+  expect(document.session.trials[0].finalPlan.items).toHaveLength(4);
   expect(Object.values(document.session.postTaskSurveys)).toHaveLength(3);
   expect(Object.values(document.session.postTaskSurveys).every((survey: any) => survey.helpfulness === 'not-applicable')).toBe(true);
   expect(Object.values(document.session.postTaskSurveys).every((survey: any) => survey.interruption === 'not-applicable')).toBe(true);

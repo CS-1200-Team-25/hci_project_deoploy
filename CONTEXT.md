@@ -17,8 +17,23 @@ instructions, three task/post-task-survey pairs, final survey and completion.
 Birthday planning
 now supports catalog selection, quantity edits, scheduled activity moves and
 removal. Its public task contract validates 12 food servings, 12 drink servings,
-one activity, the $300 budget and activities within 14:00–17:00 without overlap.
-Decorations are an optional improvement. Weekend planning now supports lodging
+one activity, at least one decoration, the $200 budget and activities within
+14:00–17:00 without overlap. Extra activities remain optional.
+The $200 cap keeps every catalog option feasible,
+but requires a cheaper food choice when selecting the craft workshop and water:
+sandwich platters total $198 with banners; wraps total $203 and fail.
+This is a pilot difficulty adjustment, not demonstrated task equivalence.
+The initial agent-run baseline observation found a four-edit birthday solution,
+10–11-edit weekend examples and a two-edit weekly-schedule solution.
+Weekly scheduling now closes that shortcut with distributed preparation.
+The follow-up observation found seven-edit weekly solutions between the
+birthday and weekend examples. These counts describe scripted paths, not
+human completion times or proven equivalence. See
+`docs/task-difficulty-observation.md` for the initial evidence and
+`docs/weekly-schedule-difficulty-observation.md` for the follow-up.
+Scenario version4 records these requirements; earlier sessions are preserved
+and rejected on recovery rather than revalidated under different rules.
+Weekend planning now supports lodging
 and transport selections and activity add/remove/edit/day/time moves. Weekly
 scheduling includes immutable fixed commitments plus editable preparation and
 optional meal/rest/exercise/buffer blocks. All three workspaces now use the same
@@ -35,16 +50,23 @@ overlap each other or overnight lodging. Exact travel/window/budget boundaries
 pass. Feasible backtracking is optional, never a hidden passing requirement.
 The explicit weekend scenario is included in scenario version2.
 
-Schedule fixture version1 preserves Monday/Wednesday/Friday09:00–11:00 classes
+Schedule fixture version2 preserves Monday/Wednesday/Friday09:00–11:00 classes
 and Tuesday/Thursday13:00–17:00 work. Blocks use day indices0–4 and local whole
 minutes; durations are positive whole minutes and all blocks fit08:00–20:00.
 Intervals include their start and exclude their end, allowing adjacent blocks.
 At least240 non-overlapping preparation minutes must occur before Friday17:00.
+Preparation before that deadline must span at least three different weekdays.
+Total scheduled preparation on each day is limited to90 minutes across all
+preparation blocks, including any time after the deadline. Splitting blocks
+on the same day cannot bypass the cap. The workspace shows counted minutes,
+qualifying days and each weekday's total preparation minutes.
 The portion of a preparation block before the deadline counts, even when its
 remaining time falls later. Optional blocks are not required; selected optional
 blocks still obey daily bounds and overlap rules. Fixed commitments are
 read-only and their exact presence is enforced by runtime edit/recovery guards.
-Scenario version3 records these explicit boundary/duration semantics.
+Scenario version5 records the new distribution and daily-cap requirements;
+`pilot-8` / `planning-signals-v4` rejects older saved configurations while
+preserving their data, rather than changing their completion requirements.
 
 The shared lifecycle records every submission and validation result. Failed
 submissions show blocking requirements in a dismissible toast,
@@ -104,16 +126,17 @@ Baseline's disabled threshold is serialized explicitly as `null` alongside
 recruitment. See `ARCHITECTURE.md` and GitHub issues #3 and #4 for the full
 contract and issues #4–#9 for the implemented slices.
 
-Birthday signal version1 is independent of condition. Missing food/drink have
-severity .85 and missing activity .8. Present food/drink with fewer than12
-servings score .4 + .4 × missing fraction. Budget pressure above$240 through$300
-scores .6 × (cost−240)/60; excess scores .8 + .2 × (cost−300)/300, capped at1.
+Birthday signals in planning-signals-v3 are independent of condition.
+Missing food, drinks and decorations score .85; missing activity scores .8.
+Present food/drink with fewer than12 servings score .4 + .4 × missing fraction.
+Budget pressure above$160 through$200 scores .6 × (cost−160)/40;
+excess scores .8 + .2 × (cost−200)/200, capped at1.
 Activities outside14:00–17:00 and each overlapping pair score .9, with stable
 item/pair IDs. A valid activity schedule's largest gap of at least90 minutes
 scores .35 × gap/180 (optional efficiency). All scores clamp to[0,1]. Stable
 category IDs remain unchanged across revisions; pair IDs sort item IDs.
 
-Policy version4 disables baseline explicitly; low/high thresholds are .75/.4.
+Policy version4 disables baseline explicitly; low/high thresholds are .6/.3.
 Meaningful committed edits evaluate across all tasks. Visible active tasks also
 evaluate after30 seconds without an evaluation, using the same policy and
 generation path without changing plan revisions. Baseline, pending requests and
@@ -186,7 +209,7 @@ cannot confirm that a file was saved. Failure events flag compromised retention;
 Supervisor storage tools offer downloads throughout the participant flow.
 
 
-All-task signal configuration `pilot-6` / `planning-signals-v2` keeps the
+All-task signal configuration `pilot-8` / `planning-signals-v4` uses the
 birthday rules above and adds condition-independent weekend and schedule
 signals. The evaluator never changes the validator or reads condition metadata.
 Generation context includes the current plan, fixed constraints and applicable
@@ -226,12 +249,17 @@ cover every intersecting pair; metadata retains bookings or travel minutes.
 Returning to a location after visiting another location produces optional daily
 backtracking advice. Exact travel and opening boundaries produce no conflict.
 
-Schedule identities are `schedule:preparation`, `schedule:bounds:<blockId>`,
+Schedule identities are `schedule:preparation`, `schedule:preparation-days`,
+`schedule:preparation-limit:<day>`, `schedule:bounds:<blockId>`,
 `schedule:deadline:<blockId>`,
 `schedule:overlap:<sortedIdPair>`,
 `schedule:back-to-back:<fromId>:<toId>` and
 `schedule:optional:<meal|rest|exercise>`.
 Preparation severity is .4 + .45 times the missing fraction of 240 minutes.
+Missing preparation days score .4 + .4 times the missing fraction of three
+qualifying days; only valid non-overlapping preparation before the deadline
+contributes. Each daily preparation total above90 minutes scores .9 and
+retains its weekday and planned/maximum minutes in signal metadata.
 For assistance coverage, only valid, non-overlapping preparation minutes before
 Friday17:00 count. Friday preparation extending after the deadline also has a
 separate deadline signal. Missing optional kinds mean none anywhere in the week;

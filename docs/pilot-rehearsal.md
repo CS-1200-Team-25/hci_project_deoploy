@@ -1,7 +1,7 @@
 # Supervised pilot rehearsal
 
 Use a supervised desktop with pseudonymous rehearsal IDs. These materials and
-`pilot-5` / `planning-signals-v2` / `pilot-policy-v3` are proposed defaults for research-team review.
+`pilot-8` / `planning-signals-v4` / `pilot-policy-v4` are proposed defaults for research-team review.
 They do not establish recruitment approval, task equivalence or statistical
 power. Consent, survey wording, catalogs, policies and deployment configuration
 need review and a recorded freeze before recruitment.
@@ -24,6 +24,30 @@ need review and a recorded freeze before recruitment.
       selected evaluations or requests, as exposure.
 
 ## Participant flow and feasibility (pending human observation)
+
+An agent-run baseline comparison of all three tasks is recorded in
+[`task-difficulty-observation.md`](task-difficulty-observation.md), with nine
+browser walkthroughs and an executable reproduction script. It found birthday
+intermediate, weekend hardest and a two-edit weekly-schedule shortcut. This
+documents the original comparison. The
+[`weekly follow-up`](weekly-schedule-difficulty-observation.md) reruns all tasks
+after requiring three preparation days and at most90 minutes per day. Its
+seven-edit weekly solutions sit between the four-edit birthday and10–11-edit
+weekend examples. Participant timing and perceived effort remain separate
+human observations.
+
+- [ ] Confirm weekly instructions require240 preparation minutes before Friday
+      17:00 across at least three weekdays, with at most90 minutes on any day.
+      A single240-minute block must fail. Multiple blocks on the same day must
+      share the90-minute cap, including time after the deadline. Verify that
+      Monday90, Tuesday90 and Wednesday60 minutes passes without conflicts.
+
+- [ ] Confirm birthday instructions require food and drink for 12 guests, one
+      activity and decorations within $200. Verify missing decorations block
+      submission. Wraps, water, craft workshop and banners total $203 and fail;
+      replacing wraps with two sandwich platters totals $198 and passes. Compare
+      observed completion times and corrections with weekend and weekly tasks
+      before deciding whether difficulty is comparable.
 
 - [ ] Create session, consent and reveal task using only keyboard (Tab, Shift+Tab,
       Enter, Space, arrow keys). Check focus visibility/order, catalog buttons,

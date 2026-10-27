@@ -31,6 +31,7 @@ async function secondTask(page: Page) {
   await page.getByRole('button', { name: 'Add Wrap buffet', exact: true }).click();
   await page.getByRole('button', { name: 'Add Water pack', exact: true }).click();
   await page.getByRole('button', { name: 'Add Trivia', exact: true }).click();
+  await page.getByRole('button', { name: 'Add Banners', exact: true }).click();
   await page.getByRole('button', { name: 'Complete task' }).click();
   await page.getByLabel('Helpfulness rating').selectOption('not-applicable');
   await page.getByLabel('Interruption rating').selectOption('2');

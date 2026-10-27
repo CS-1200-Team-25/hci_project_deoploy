@@ -1,8 +1,9 @@
 import type { AgentSignal } from '../types/agent';
 import type { ExperimentTask, ValidationResult } from '../types/task';
 import { PILOT_SCENARIOS } from '../experiment/scenarios';
+import { SCHEDULE_REQUIREMENTS } from './schedule-rules';
 
-export const SCHEDULE_VERSION = 'schedule-fixture-v1';
+export const SCHEDULE_VERSION = 'schedule-fixture-v2';
 export const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] as const;
 export type ScheduleKind = 'class' | 'work' | 'preparation' | 'meal' | 'rest' | 'exercise' | 'buffer';
 export const EDITABLE_SCHEDULE_KINDS = ['preparation', 'meal', 'rest', 'exercise', 'buffer'] as const;
@@ -48,12 +49,22 @@ export function isScheduleState(value: unknown): value is ScheduleState {
 }
 
 export function scheduleSummary(state: ScheduleState) {
-  const preparationMinutesBeforeDeadline = state.blocks.filter((block) => block.kind === 'preparation'
+  const dailyPreparationMinutes = Array<number>(WEEKDAYS.length).fill(0);
+  const dailyPreparationMinutesBeforeDeadline = Array<number>(WEEKDAYS.length).fill(0);
+  const preparation = state.blocks.filter((block) => block.kind === 'preparation'
     && Number.isInteger(block.day) && block.day >= 0 && block.day <= 4
     && Number.isSafeInteger(block.startMinute) && Number.isSafeInteger(block.durationMinutes)
-    && block.durationMinutes > 0 && block.startMinute >= 480 && block.startMinute + block.durationMinutes <= 1200)
-    .reduce((minutes, block) => minutes + (block.day < 4 ? block.durationMinutes : Math.max(0, Math.min(block.startMinute + block.durationMinutes, 1020) - block.startMinute)), 0);
-  return { preparationMinutesBeforeDeadline, blockCount: state.blocks.length };
+    && block.durationMinutes > 0 && block.startMinute >= SCHEDULE_REQUIREMENTS.startMinute && block.startMinute + block.durationMinutes <= SCHEDULE_REQUIREMENTS.endMinute);
+  for (const block of preparation) {
+    dailyPreparationMinutes[block.day] += block.durationMinutes;
+    dailyPreparationMinutesBeforeDeadline[block.day] += block.day < SCHEDULE_REQUIREMENTS.deadline.day ? block.durationMinutes
+      : Math.max(0, Math.min(block.startMinute + block.durationMinutes, SCHEDULE_REQUIREMENTS.deadline.minute) - block.startMinute);
+  }
+  return {
+    preparationMinutesBeforeDeadline: dailyPreparationMinutesBeforeDeadline.reduce((sum, minutes) => sum + minutes, 0),
+    preparationDaysBeforeDeadline: dailyPreparationMinutesBeforeDeadline.filter(minutes => minutes > 0).length,
+    dailyPreparationMinutes, blockCount: state.blocks.length,
+  };
 }
 
 function validateSchedule(state: ScheduleState): ValidationResult {
@@ -80,7 +91,12 @@ function validateSchedule(state: ScheduleState): ValidationResult {
       }
     }
   }
-  if (scheduleSummary(state).preparationMinutesBeforeDeadline < 240) errors.push('Schedule at least four preparation hours (240 minutes) before Friday 17:00.');
+  const summary = scheduleSummary(state);
+  if (summary.preparationMinutesBeforeDeadline < SCHEDULE_REQUIREMENTS.preparationMinutes) errors.push('Schedule at least four preparation hours (240 minutes) before Friday 17:00.');
+  if (summary.preparationDaysBeforeDeadline < SCHEDULE_REQUIREMENTS.minimumPreparationDays) errors.push(`Spread preparation before Friday 17:00 across at least ${SCHEDULE_REQUIREMENTS.minimumPreparationDays} different weekdays.`);
+  summary.dailyPreparationMinutes.forEach((minutes, day) => {
+    if (minutes > SCHEDULE_REQUIREMENTS.maxPreparationMinutesPerDay) errors.push(`Keep total preparation on ${WEEKDAYS[day]} at or below ${SCHEDULE_REQUIREMENTS.maxPreparationMinutesPerDay} minutes, including time after the deadline.`);
+  });
   const hasOptional = state.blocks.some((block) => ['meal', 'rest', 'exercise', 'buffer'].includes(block.kind));
   return { isComplete: errors.length === 0, errors, warnings: hasOptional ? [] : ['Meals, rest, exercise and buffers are optional; add them if helpful.'] };
 }
@@ -96,9 +112,16 @@ export function evaluateScheduleSignals(state: ScheduleState): AgentSignal[] {
     && block.durationMinutes > 0 && block.startMinute >= 480 && block.startMinute + block.durationMinutes <= 1200
     && !state.blocks.some(other => other.id !== block.id && other.day === block.day
       && other.startMinute < block.startMinute + block.durationMinutes && block.startMinute < other.startMinute + other.durationMinutes));
-  const prepared = scheduleSummary({ blocks: validPreparation }).preparationMinutesBeforeDeadline;
-  if (prepared < 240) add('preparation', 'coverage', .4 + .45 * (240 - prepared) / 240,
-    'Reserve four non-overlapping preparation hours before Friday 17:00.', { preparedMinutes: prepared, requiredMinutes: 240 });
+  const coverage = scheduleSummary({ blocks: validPreparation });
+  const prepared = coverage.preparationMinutesBeforeDeadline;
+  if (prepared < SCHEDULE_REQUIREMENTS.preparationMinutes) add('preparation', 'coverage', .4 + .45 * (SCHEDULE_REQUIREMENTS.preparationMinutes - prepared) / SCHEDULE_REQUIREMENTS.preparationMinutes,
+    'Reserve four non-overlapping preparation hours before Friday 17:00.', { preparedMinutes: prepared, requiredMinutes: SCHEDULE_REQUIREMENTS.preparationMinutes });
+  if (coverage.preparationDaysBeforeDeadline < SCHEDULE_REQUIREMENTS.minimumPreparationDays) add('preparation-days', 'coverage', .4 + .4 * (SCHEDULE_REQUIREMENTS.minimumPreparationDays - coverage.preparationDaysBeforeDeadline) / SCHEDULE_REQUIREMENTS.minimumPreparationDays,
+    `Spread preparation before Friday 17:00 across at least ${SCHEDULE_REQUIREMENTS.minimumPreparationDays} different weekdays.`, { preparedDays: coverage.preparationDaysBeforeDeadline, requiredDays: SCHEDULE_REQUIREMENTS.minimumPreparationDays });
+  scheduleSummary(state).dailyPreparationMinutes.forEach((minutes, day) => {
+    if (minutes > SCHEDULE_REQUIREMENTS.maxPreparationMinutesPerDay) add(`preparation-limit:${day}`, 'schedule-conflict', .9,
+      `Reduce total preparation on ${WEEKDAYS[day]} to at most ${SCHEDULE_REQUIREMENTS.maxPreparationMinutesPerDay} minutes, including time after the deadline.`, { day, weekday: WEEKDAYS[day], plannedMinutes: minutes, maxMinutes: SCHEDULE_REQUIREMENTS.maxPreparationMinutesPerDay });
+  });
   for (const block of state.blocks) {
     if (!Number.isInteger(block.day) || block.day < 0 || block.day > 4 || !Number.isSafeInteger(block.startMinute)
       || !Number.isSafeInteger(block.durationMinutes) || block.durationMinutes <= 0 || block.startMinute < 480 || block.startMinute + block.durationMinutes > 1200) {
@@ -146,6 +169,6 @@ export const scheduleTask: ExperimentTask<ScheduleState> = {
       timeEncoding: 'day is 0 Monday through 4 Friday; startMinute is whole minutes after midnight. Present suggested times with weekday and HH:MM.',
       blockIdentification: 'Match selected-signal block IDs to plan blocks. Refer to their readable description (weekday, block type and current time range), especially when two blocks share a type or day. Use Block type, Day, Start time and Duration controls for editable blocks; keep fixed commitments unchanged.',
     },
-    constraints: { weekdays: WEEKDAYS, startMinute: 480, endMinute: 1200, dailyWindow: 'Monday–Friday 08:00–20:00', preparationMinutes: 240, deadline: { day: 4, minute: 1020, label: 'Friday 17:00' }, optionalKinds: ['meal', 'rest', 'exercise', 'buffer'] },
+    constraints: { ...SCHEDULE_REQUIREMENTS, weekdays: WEEKDAYS, dailyWindow: 'Monday–Friday 08:00–20:00', deadline: { ...SCHEDULE_REQUIREMENTS.deadline, label: 'Friday 17:00' }, dailyPreparationLimitScope: 'All scheduled preparation minutes on each day, including time after the deadline.', optionalKinds: ['meal', 'rest', 'exercise', 'buffer'] },
   } }), evaluateSignals: evaluateScheduleSignals,
 };

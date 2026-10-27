@@ -14,15 +14,15 @@ test('all tasks separate high and low eagerness early and escalate unresolved is
       displays: [], inFlightSignalIds: [], reservedSignalIds: [], resolvedSignalIds: [] };
     const high = evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.high, context);
     expect(high.selected).not.toBeNull();
-    expect(high.evaluations.every(item => item.finalScore < 0.75)).toBe(true);
+    expect(high.evaluations.every(item => item.finalScore < PILOT_CONFIGURATION.conditions.low.threshold)).toBe(true);
     expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.low, context).selected).toBeNull();
     expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.low, { ...context, now: 120000 }).selected).not.toBeNull();
   }
   const signals = [{ id: 'optional', type: 'efficiency' as const, severity: .45, message: 'Optional improvement' }];
   const context = { now: 60000, issueStartedAt: { optional: 0 }, displays: [], inFlightSignalIds: [], reservedSignalIds: [], resolvedSignalIds: [] };
   expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.high, context).selected).not.toBeNull();
-  expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.low, { ...context, now: 120000 }).selected).toBeNull();
-  expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.low, { ...context, now: 180000 }).selected).not.toBeNull();
+  expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.low, context).selected).toBeNull();
+  expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.low, { ...context, now: 120000 }).selected).not.toBeNull();
 });
 
 test('meaningful edits persist reservations without replay or exposure; damaged histories cannot recover', () => {
@@ -37,7 +37,7 @@ test('meaningful edits persist reservations without replay or exposure; damaged 
   const recovered = loadSession({ getItem: () => JSON.stringify(edited), setItem: () => {} })!;
   expect(recovered.events).toEqual(edited.events);
   const repeated = updateTaskState(recovered, { items: [{ ...state.items[0], quantity: 2 }] }, { type: 'item_updated', payload: {} }, 2000);
-  expect(repeated.events.filter((event) => event.eventType === 'signal_evaluated').slice(-2).some((event) => event.payload.exclusionReason === 'reserved')).toBe(true);
+  expect(repeated.events.filter((event) => event.eventType === 'signal_evaluated').slice(-3).some((event) => event.payload.exclusionReason === 'reserved')).toBe(true);
   expect(repeated.events.some((event) => event.eventType === 'agent_intervention_shown')).toBe(false);
   const damaged = structuredClone(edited);
   damaged.trials[0].agentHistory!.selections[0].stateRevision = 99;
@@ -56,12 +56,12 @@ test('filters before ranking and uses stable IDs and actual display cooldown bou
 });
 
 test('birthday signals are normalized, stable, and independent of policy; feasible plans can have no signals', () => {
-  expect(birthdayTask.evaluateSignals({ items: [] }).map((signal) => signal.id)).toEqual(['birthday:missing:food', 'birthday:missing:drink', 'birthday:missing:activity']);
+  expect(birthdayTask.evaluateSignals({ items: [] }).map((signal) => signal.id)).toEqual(['birthday:missing:food', 'birthday:missing:drink', 'birthday:missing:activity', 'birthday:missing:decoration']);
   const state = { items: [
     { id: 'food', optionId: 'sandwich-platter', quantity: 1 },
     { id: 'drink', optionId: 'water-pack', quantity: 1 },
-    { id: 'games', optionId: 'party-games', quantity: 1, startMinute: 840 },
-    { id: 'craft', optionId: 'craft-workshop', quantity: 1, startMinute: 885 },
+    { id: 'games', optionId: 'trivia', quantity: 1, startMinute: 915 },
+    { id: 'decoration', optionId: 'banners', quantity: 1 },
   ] };
   expect(birthdayTask.evaluateSignals(state)).toMatchObject([{ id: 'birthday:coverage:food', severity: 0.6 }]);
   expect(birthdayTask.evaluateSignals({ items: state.items.map((item) => item.id === 'food' ? { ...item, quantity: 2 } : item) })).toEqual([]);

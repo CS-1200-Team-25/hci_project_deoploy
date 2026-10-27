@@ -31,6 +31,7 @@ for (const endSchedule of ['successful', 'unsuccessful'] as const) {
     await page.getByRole('button', { name: 'Add Wrap buffet', exact: true }).click();
     await page.getByRole('button', { name: 'Add Water pack', exact: true }).click();
     await page.getByRole('button', { name: 'Add Trivia', exact: true }).click();
+    await page.getByRole('button', { name: 'Add Banners', exact: true }).click();
     await page.getByRole('button', { name: 'Add Craft workshop', exact: true }).click();
     const craft = page.getByRole('group', { name: /Craft workshop/ });
     await craft.getByLabel('Start time').fill('15:00');
@@ -61,16 +62,21 @@ for (const endSchedule of ['successful', 'unsuccessful'] as const) {
     expect(requests).toHaveLength(priorCalls);
     await page.getByRole('button', { name: 'Complete task' }).click();
     await survey(page, true);
-    await page.getByRole('button', { name: 'Add preparation block' }).click();
     await page.clock.fastForward(30000);
     await expect(page.getByText('Review schedule constraints.', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Add preparation block' }).click();
     await page.getByRole('button', { name: 'Acknowledge' }).click();
     await page.getByRole('group', { name: 'preparation block 1' }).getByLabel('Duration (minutes)').fill('90');
     await page.clock.runFor(10000);
     if (endSchedule === 'successful') {
       const prep = page.getByRole('group', { name: 'preparation block 1' });
       await prep.getByLabel('Start time').fill('12:00');
-      await prep.getByLabel('Duration (minutes)').fill('240');
+      await page.getByRole('button', { name: 'Add preparation block' }).click();
+      const tuesday = page.getByRole('group', { name: 'preparation block 2' });
+      await tuesday.getByLabel('Day').selectOption('1');
+      await tuesday.getByLabel('Duration (minutes)').fill('90');
+      await page.getByRole('button', { name: 'Add preparation block' }).click();
+      await page.getByRole('group', { name: 'preparation block 3' }).getByLabel('Day').selectOption('2');
       await page.getByRole('button', { name: 'Complete task' }).click();
     } else {
       await openSupervisorTools(page);
@@ -100,7 +106,7 @@ for (const endSchedule of ['successful', 'unsuccessful'] as const) {
     expect(session.trials[2].successfulCompletionMs ?? null).toBe(endSchedule === 'successful' ? 40000 : null);
     expect(exported.trialMetrics.map((trial: any) => trial.displayCount)).toEqual([0, 1, 1]);
     expect(session.configuration.conditions.baseline).toEqual({ proactive: false, threshold: null });
-    expect(session.configuration.signalVersion).toBe('planning-signals-v2');
+    expect(session.configuration.signalVersion).toBe('planning-signals-v4');
     expect(events.slice(0, priorEvents.length)).toEqual(priorEvents);
     expect(new Set(events.map((event: any) => event.id)).size).toBe(events.length);
     expect(events.map((event: any) => event.sequence)).toEqual(events.map((_event: any, index: number) => index + 1));
@@ -147,7 +153,6 @@ for (const [sequence, task, firstEdit, nextEdit] of [
     });
     if (firstEdit === 'lodging') await page.getByLabel('Saturday-night lodging').selectOption('guesthouse');
     else await page.getByRole('button', { name: 'Add preparation block' }).click();
-    if (task === 'schedule') await page.clock.fastForward(30000);
     await expect.poll(() => calls).toBe(1);
     await page.evaluate(() => { Storage.prototype.setItem = function () { throw new DOMException('Full', 'QuotaExceededError'); }; });
     if (nextEdit === 'transport') await page.getByLabel('Transport option').selectOption('transit-pass');

@@ -8,6 +8,7 @@ import { getTask } from '../src/tasks/registry';
 import { evaluateInterventions } from '../src/agent/engine';
 import { PILOT_CONFIGURATION } from '../src/experiment/conditions';
 import { validRequest } from '../server/provider.mjs';
+import { PASSING_SCHEDULE } from './schedule-fixtures';
 
 const passing = { lodgingId: 'guesthouse', transportId: 'transit-pass', activities: [
   { id: 'a', optionId: 'museum', startMinute: 600 }, { id: 'b', optionId: 'gallery', startMinute: 720 },
@@ -23,7 +24,7 @@ test('weekend passing and flawed real plans expose stable structured independent
   expect(weekendTask.getAgentContext(passing).summary).toMatchObject({ plan: passing, constraints: { budget: 500 }, travel: { 'transit-pass': { station: { museum: 20 } } } });
 });
 test('schedule preparation, deadlines, conflicts and optional wellbeing are distinct stable signals', () => {
-  const prepared = { blocks: [...FIXED_COMMITMENTS, { id: 'prep', kind: 'preparation' as const, day: 0, startMinute: 720, durationMinutes: 240 }] };
+  const prepared = PASSING_SCHEDULE;
   expect(scheduleTask.validate(prepared).isComplete).toBe(true);
   expect(scheduleTask.evaluateSignals(prepared).map(signal => signal.id)).toEqual(['schedule:optional:meal', 'schedule:optional:rest', 'schedule:optional:exercise']);
   expect(scheduleTask.evaluateSignals(scheduleTask.initialState).find(signal => signal.id === 'schedule:preparation')?.severity).toBeCloseTo(.85);
@@ -58,7 +59,7 @@ for (const [sequence, task, state] of [[17, 'weekend', { ...passing, lodgingId: 
   });
 }
 test('identical optional schedules expose controlled low/high differences while all conditions share passing requirements', () => {
-  const state = { blocks: [...FIXED_COMMITMENTS, { id: 'prep', kind: 'preparation' as const, day: 0, startMinute: 720, durationMinutes: 240 }] };
+  const state = PASSING_SCHEDULE;
   const signals = scheduleTask.evaluateSignals(state);
   const history = { now: 61000, issueStartedAt: Object.fromEntries(signals.map(signal => [signal.id, 1000])), displays: [], inFlightSignalIds: [], reservedSignalIds: [], resolvedSignalIds: [], displayCooldowns: PILOT_CONFIGURATION.displayCooldowns };
   expect(evaluateInterventions(signals, PILOT_CONFIGURATION.conditions.baseline, history).selected).toBeNull();
