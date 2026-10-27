@@ -7,6 +7,11 @@ browser to fetch the updated configuration. APP_ORIGIN must match the browser
 origin. Vite proxies /api to 127.0.0.1:8787 in dev and preview; production still
 needs the service. Keep .env private and never prefix credentials with VITE_.
 
+For hosted deployments, see [Vercel + Render setup](../instructions.md).
+The provider listener reads `HOST` and `PORT`, defaulting to `127.0.0.1:8787`
+locally. Render sets `HOST=0.0.0.0` and supplies `PORT`; Vercel proxies the
+existing API paths to that service using its `PROVIDER_URL` setting.
+
 ## Gemini configuration
 
 The pilot uses Gemini's native generateContent API only. The default model is

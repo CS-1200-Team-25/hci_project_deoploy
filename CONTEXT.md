@@ -175,6 +175,13 @@ output limit and finite timeout are shared across active conditions and recorded
 with every request; condition is never sent to the provider. The provider key
 stays on the server. See `docs/provider.md` for startup and live smoke checks.
 
+Hosted pilot deployment uses a Vercel static frontend and a Render Node web
+service. `vercel.json` proxies the existing `/api/*` paths through the
+environment-specific `PROVIDER_URL`; `render.yaml` configures the provider's
+public listener, health check and server-only settings. The local listener
+defaults remain loopback port 8787. `APP_ORIGIN` on Render must match the
+frontend origin exactly. See `instructions.md` for deployment and verification.
+
 Generation permits one pending request per trial. Every meaningful edit cancels
 its prior revision; completion, termination and reload also end pending requests.
 Late responses cannot display. Responses are validated against selection and
