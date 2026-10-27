@@ -1,10 +1,11 @@
 import type { TaskId } from '../types/experiment';
+import { BIRTHDAY_REQUIREMENTS } from '../tasks/birthday-rules';
 
 /** Fixed fictional pilot drafts; later task workspaces implement these requirements. */
 export const PILOT_SCENARIOS: Record<TaskId, { title: string; instructions: string }> = {
   birthday: {
     title: 'Birthday-party planning',
-    instructions: 'Plan a fictional Saturday party for 12 guests, 14:00–17:00, within a $300 budget. Include at least 12 food servings, 12 drink servings and one activity. Keep activities within the party window without overlaps. Decorations and extra activities are optional.',
+    instructions: `Plan a fictional Saturday party for 12 guests, 14:00–17:00, within a $${BIRTHDAY_REQUIREMENTS.budget} budget. Include at least 12 food servings, 12 drink servings, one activity and one decoration. Include every food, drink, activity and decoration cost. Keep activities within the party window without overlaps. Extra activities are optional.`,
   },
   weekend: {
     title: 'Weekend-itinerary planning',

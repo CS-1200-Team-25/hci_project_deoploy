@@ -13,6 +13,7 @@ test('not-applicable answers are rejected after displayed assistance and damaged
   const plan = { items: [
     { id: 'food', optionId: 'wrap-buffet', quantity: 1 }, { id: 'drink', optionId: 'water-pack', quantity: 1 },
     { id: 'activity', optionId: 'trivia', quantity: 1, startMinute: 840 },
+    { id: 'decoration', optionId: 'banners', quantity: 1 },
   ] };
   expect(birthdayTask.validate(plan).isComplete).toBe(true);
   const ended = submitTask(updateTaskState(active, plan, { type: 'item_updated', payload: {} }, 2500), 3000);
@@ -52,6 +53,7 @@ test('dragged and keyboard-ranked trial preferences persist through the toggle, 
   await page.getByRole('button', { name: 'Add Wrap buffet', exact: true }).click();
   await page.getByRole('button', { name: 'Add Water pack', exact: true }).click();
   await page.getByRole('button', { name: 'Add Trivia', exact: true }).click();
+  await page.getByRole('button', { name: 'Add Banners', exact: true }).click();
   await page.getByRole('button', { name: 'Complete task' }).click();
   await expect(page.getByRole('heading', { name: 'Post-task survey' })).toBeVisible();
   await expect(page.locator('.validation-feedback')).toHaveCount(0);

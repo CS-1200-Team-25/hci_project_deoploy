@@ -11,8 +11,8 @@ for (const [sequence, condition] of [[1, 'baseline'], [3, 'low'], [5, 'high']] a
     const fixture = { items: [
       { id: 'food', optionId: 'sandwich-platter', quantity: 2 },
       { id: 'drink', optionId: 'water-pack', quantity: 1 },
-      { id: 'games', optionId: 'party-games', quantity: 1, startMinute: 840 },
-      { id: 'craft', optionId: 'craft-workshop', quantity: 1, startMinute: 885 },
+      { id: 'games', optionId: 'trivia', quantity: 1, startMinute: 915 },
+      { id: 'decoration', optionId: 'banners', quantity: 1 },
     ] };
     // Public task adapter starts all policies at the same feasible state, with no selection history.
     const session = revealTask(consentToSession(createSession(`POL${sequence}`, sequence, now), now), now,

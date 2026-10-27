@@ -6,7 +6,7 @@ import { loadSession, saveSession } from '../src/experiment/persistence';
 import { getTask } from '../src/tasks/registry';
 
 const config = { model: 'test-model', promptVersion: 'advice-v1', schemaVersion: 'advice-v1', settings: { maxOutputTokens: 300 }, timeoutMs: 15000 };
-const fixture = { items: [{ id: 'food', optionId: 'sandwich-platter', quantity: 2 }, { id: 'drink', optionId: 'water-pack', quantity: 1 }, { id: 'games', optionId: 'party-games', quantity: 1, startMinute: 840 }, { id: 'craft', optionId: 'craft-workshop', quantity: 1, startMinute: 885 }] };
+const fixture = { items: [{ id: 'food', optionId: 'sandwich-platter', quantity: 2 }, { id: 'drink', optionId: 'water-pack', quantity: 1 }, { id: 'games', optionId: 'trivia', quantity: 1, startMinute: 915 }, { id: 'decoration', optionId: 'banners', quantity: 1 }] };
 function selected() {
   const session = revealTask(consentToSession(createSession('PUBLIC', 5, 1000), 1000), 1000,
     (id) => id === 'birthday' ? { ...getTask(id)!, initialState: fixture } : getTask(id));

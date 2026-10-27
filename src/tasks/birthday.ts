@@ -1,6 +1,7 @@
 import type { ExperimentTask, ValidationResult } from '../types/task';
 import { PILOT_SCENARIOS } from '../experiment/scenarios';
 import type { AgentSignal } from '../types/agent';
+import { BIRTHDAY_REQUIREMENTS } from './birthday-rules';
 
 export interface BirthdayOption {
   id: string;
@@ -87,12 +88,13 @@ function validateBirthday(state: BirthdayState): ValidationResult {
   if (summary.foodServings < 12) errors.push('Include at least 12 food servings.');
   if (summary.drinkServings < 12) errors.push('Include at least 12 drink servings.');
   if (!state.items.some((item) => BIRTHDAY_CATALOG.find((option) => option.id === item.optionId)?.category === 'activity')) errors.push('Include at least one activity.');
-  if (!Number.isFinite(summary.totalCost) || summary.totalCost > 300) errors.push('Keep total cost at or below $300.');
+  if (!decorations) errors.push('Include at least one decoration.');
+  if (!Number.isFinite(summary.totalCost) || summary.totalCost > BIRTHDAY_REQUIREMENTS.budget) errors.push(`Keep total cost at or below $${BIRTHDAY_REQUIREMENTS.budget}.`);
   activities.sort((a, b) => a.start - b.start);
   for (let index = 1; index < activities.length; index++) {
     if (activities[index].start < activities[index - 1].end) errors.push(`${activities[index - 1].label} and ${activities[index].label} overlap.`);
   }
-  return { isComplete: errors.length === 0, errors, warnings: decorations ? [] : ['Decorations are optional; none are included.'] };
+  return { isComplete: errors.length === 0, errors, warnings: [] };
 }
 
 export function birthdaySignals(state: BirthdayState): AgentSignal[] {
@@ -101,16 +103,18 @@ export function birthdaySignals(state: BirthdayState): AgentSignal[] {
     signals.push({ id: `birthday:${id}`, type, severity: Math.min(1, Math.max(0, Number(severity.toFixed(6)))), message });
   };
   const summary = birthdaySummary(state);
-  for (const category of ['food', 'drink', 'activity'] as const) {
+  for (const category of ['food', 'drink', 'activity', 'decoration'] as const) {
     if (!state.items.some((item) => BIRTHDAY_CATALOG.find((option) => option.id === item.optionId)?.category === category)) {
       add(`missing:${category}`, 'missing-category', category === 'activity' ? 0.8 : 0.85, `Include ${category} in the birthday plan.`);
-    } else if (category !== 'activity') {
+    } else if (category === 'food' || category === 'drink') {
       const servings = category === 'food' ? summary.foodServings : summary.drinkServings;
       if (servings < 12) add(`coverage:${category}`, 'coverage', 0.4 + 0.4 * (12 - servings) / 12, `${category} does not yet cover all 12 guests.`);
     }
   }
-  if (summary.totalCost > 240) add('budget', 'budget', summary.totalCost > 300
-    ? 0.8 + 0.2 * (summary.totalCost - 300) / 300 : 0.6 * (summary.totalCost - 240) / 60, 'Check the plan against the $300 budget.');
+  const budget = BIRTHDAY_REQUIREMENTS.budget;
+  const pressureStart = budget * 0.8;
+  if (summary.totalCost > pressureStart) add('budget', 'budget', summary.totalCost > budget
+    ? 0.8 + 0.2 * (summary.totalCost - budget) / budget : 0.6 * (summary.totalCost - pressureStart) / (budget - pressureStart), `Check the plan against the $${budget} budget.`);
   const activities = state.items.flatMap((item) => {
     const option = BIRTHDAY_CATALOG.find((candidate) => candidate.id === item.optionId);
     return option?.category === 'activity' ? [{ id: item.id, start: item.startMinute!, end: item.startMinute! + option.durationMinutes! }] : [];
@@ -152,7 +156,7 @@ export const birthdayTask: ExperimentTask<BirthdayState> = {
       ],
       timeEncoding: 'startMinute is whole minutes after midnight; present suggested times as HH:MM.',
     },
-    constraints: { guests: 12, budget: 300, startMinute: 840, endMinute: 1020, foodServings: 12, drinkServings: 12, requiredActivities: 1, decorationsOptional: true },
+    constraints: { ...BIRTHDAY_REQUIREMENTS, decorationsOptional: false },
   } }),
   evaluateSignals: birthdaySignals,
 };

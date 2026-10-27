@@ -8,8 +8,8 @@ test('read-only preview uses severity, recency and disabled/low/high policies ac
   const state = { items: [
     { id: 'food', optionId: 'sandwich-platter', quantity: 1 },
     { id: 'drink', optionId: 'water-pack', quantity: 1 },
-    { id: 'games', optionId: 'party-games', quantity: 1, startMinute: 840 },
-    { id: 'craft', optionId: 'craft-workshop', quantity: 1, startMinute: 885 },
+    { id: 'games', optionId: 'trivia', quantity: 1, startMinute: 915 },
+    { id: 'decoration', optionId: 'banners', quantity: 1 },
   ] };
   for (const [index, threshold, excluded] of [[1, null, 'baseline'], [3, .75, 'below-threshold'], [5, .4, 'below-threshold']] as const) {
     let session = updateTaskState(revealTask(consentToSession(createSession('SCORE', index, 1000), 1000), 1000),

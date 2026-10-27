@@ -29,7 +29,7 @@ export function BirthdayWorkspace({ state, onChange }: {
       }}>Add {option.label}</button>
     </article>)}</div>
     <h3>Your plan</h3>
-    {state.items.length === 0 && <p>No items yet. Choose food, drinks and an activity from the catalog.</p>}
+    {state.items.length === 0 && <p>No items yet. Choose food, drinks, an activity and decorations from the catalog.</p>}
     {state.items.map((item, index) => {
       const option = BIRTHDAY_CATALOG.find((candidate) => candidate.id === item.optionId)!;
       return <fieldset className="plan-item" key={item.id}>

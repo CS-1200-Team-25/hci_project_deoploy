@@ -36,6 +36,7 @@ test('supervisor downloads an incomplete recovered session without deleting save
   expect(document.session.events.slice(0, original.events.length)).toEqual(original.events);
   expect(document.trialMetrics[0]).toMatchObject({ elapsedMs: 90000, successfulCompletionMs: null, selectionCount: 0, displayCount: 0 });
   expect(document.session.configuration.conditions.baseline).toEqual({ proactive: false, threshold: null });
+  expect(document.materials.birthday).toMatchObject({ budget: 200, requiredDecorations: 1 });
   expect(document.materials.birthday.catalog.find((option: { id: string }) => option.id === 'pizza')).toBeTruthy();
   expect(document.session.supervisorAccess).toBeUndefined();
   expect(new Set(document.session.events.map((event: { id: string }) => event.id)).size).toBe(document.session.events.length);
@@ -76,6 +77,7 @@ test('completed export preserves unsuccessful durations, successful timing and r
   await page.getByRole('button', { name: 'Add Wrap buffet' }).click();
   await page.getByRole('button', { name: 'Add Water pack' }).click();
   await page.getByRole('button', { name: 'Add Party games' }).click();
+  await page.getByRole('button', { name: 'Add Banners' }).click();
   await page.clock.runFor(20000);
   await page.getByRole('button', { name: 'Complete task' }).click();
   for (let index = 0; index < 3; index++) {
@@ -102,7 +104,7 @@ test('completed export preserves unsuccessful durations, successful timing and r
     { trialId: document.session.trials[1].id, outcome: 'unsuccessful', elapsedMs: 10000, successfulCompletionMs: null, selectionCount: 0, displayCount: 0 },
     { trialId: document.session.trials[2].id, outcome: 'unsuccessful', elapsedMs: 10000, successfulCompletionMs: null, selectionCount: 0, displayCount: 0 },
   ]);
-  expect(document.session.trials[0].finalPlan.items).toHaveLength(3);
+  expect(document.session.trials[0].finalPlan.items).toHaveLength(4);
   expect(Object.values(document.session.postTaskSurveys)).toHaveLength(3);
   expect(Object.values(document.session.postTaskSurveys).every((survey: any) => survey.helpfulness === 'not-applicable')).toBe(true);
   expect(Object.values(document.session.postTaskSurveys).every((survey: any) => survey.interruption === 'not-applicable')).toBe(true);

@@ -1,6 +1,7 @@
 import type { ExperimentSession } from '../types/experiment';
 import { PILOT_SCENARIOS } from './scenarios';
 import { BIRTHDAY_CATALOG, BIRTHDAY_CATALOG_VERSION } from '../tasks/birthday';
+import { BIRTHDAY_REQUIREMENTS } from '../tasks/birthday-rules';
 import { WEEKEND_ACTIVITIES, WEEKEND_LODGING, WEEKEND_TRANSPORT, WEEKEND_TRAVEL, WEEKEND_BOUNDARIES, WEEKEND_CATALOG_VERSION } from '../tasks/weekend';
 import { FIXED_COMMITMENTS, SCHEDULE_VERSION, WEEKDAYS } from '../tasks/schedule';
 
@@ -31,7 +32,7 @@ export function createSessionExport(session: ExperimentSession, now = Date.now()
     })),
     materials: {
       scenarios: structuredClone(PILOT_SCENARIOS),
-      birthday: { version: BIRTHDAY_CATALOG_VERSION, catalog: structuredClone(BIRTHDAY_CATALOG), guests: 12, budget: 300, startMinute: 840, endMinute: 1020 },
+      birthday: { version: BIRTHDAY_CATALOG_VERSION, catalog: structuredClone(BIRTHDAY_CATALOG), ...BIRTHDAY_REQUIREMENTS },
       weekend: { version: WEEKEND_CATALOG_VERSION, activities: structuredClone(WEEKEND_ACTIVITIES), lodging: structuredClone(WEEKEND_LODGING), transport: structuredClone(WEEKEND_TRANSPORT), travel: structuredClone(WEEKEND_TRAVEL), boundaries: structuredClone(WEEKEND_BOUNDARIES), budget: 500, activitiesPerDay: 2 },
       schedule: { version: SCHEDULE_VERSION, weekdays: [...WEEKDAYS], fixedCommitments: structuredClone(FIXED_COMMITMENTS), startMinute: 480, endMinute: 1200, preparationMinutes: 240, deadline: { day: 4, minute: 1020 }, intervals: 'start-inclusive-end-exclusive' },
       survey: { version: session.configuration.surveyVersion, helpfulness: { question: 'How helpful was the assistant during this task?', minimum: 1, maximum: 7, minimumLabel: 'Not at all helpful', maximumLabel: 'Extremely helpful', noDisplayAnswer: 'not-applicable' }, interruption: { question: 'How much did the assistant interrupt your planning during this task?', minimum: 1, maximum: 7, minimumLabel: 'Not at all interruptive', maximumLabel: 'Extremely interruptive', noDisplayAnswer: 'not-applicable' }, preference: { question: 'Rank the trial experiences from most to least preferred.', responseField: 'rankedTrialIds', order: 'most-to-least-preferred', noPreference: null, noPreferenceField: 'noPreference' } },
