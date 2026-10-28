@@ -7,6 +7,17 @@ browser to fetch the updated configuration. APP_ORIGIN must match the browser
 origin. Vite proxies /api to 127.0.0.1:8787 in dev and preview; production still
 needs the service. Keep .env private and never prefix credentials with VITE_.
 
+Opening the page immediately fetches `/api/interventions/config` to wake a
+sleeping backend, including Render deployments behind the same-origin `/api`
+route. Startup retries run for at most 90 seconds, with a 15-second limit per
+attempt and a one-second pause between attempts. The first selected advice
+shares that readiness request; its configured generation timeout begins only
+after configuration is ready. Successful configuration is cached until reload.
+Warm-up does not call Gemini, create study records or block setup and editing.
+If startup remains unavailable, the existing supervisor warning is retained;
+a later selection can try again. This does not prevent a new cold start after
+a long period without backend traffic.
+
 ## Gemini configuration
 
 The pilot uses Gemini's native generateContent API only. The default model is

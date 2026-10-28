@@ -181,6 +181,12 @@ output limit and finite timeout are shared across active conditions and recorded
 with every request; condition is never sent to the provider. The provider key
 stays on the server. See `docs/provider.md` for startup and live smoke checks.
 
+Page visits warm the backend through its public configuration endpoint, sharing
+one bounded readiness request with the first selected advice. Startup retries
+allow up to90 seconds before configuration failure; advice generation retains
+its separate configured timeout. Warm-up generates no advice or study events,
+and setup and editing remain available. Configuration is cached until reload.
+
 Generation permits one pending request per trial. Every meaningful edit cancels
 its prior revision; completion, termination and reload also end pending requests.
 Late responses cannot display. Responses are validated against selection and

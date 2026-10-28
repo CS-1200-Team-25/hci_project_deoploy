@@ -124,9 +124,12 @@ for (const failure of ['invalid', 'provider', 'transport'] as const) {
 }
 
 test('unavailable provider configuration shows a retained supervisor warning without exposing raw errors', async ({ page }) => {
+  await page.clock.install();
   await page.route('**/api/interventions/config', (route) => route.fulfill({ status: 503, json: { error: 'private-upstream-detail' } }));
   await seed(page);
   await page.getByRole('button', { name: 'Add Sandwich platter' }).click();
+  // Startup gets its own bounded readiness window before the retained warning.
+  await page.clock.fastForward(90_001);
   const warning = page.getByRole('status', { name: 'Supervisor generation status' });
   await expect(warning).toContainText('Assistant configuration could not be loaded');
   await expect(page.getByText('private-upstream-detail')).toHaveCount(0);
