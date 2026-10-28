@@ -125,5 +125,8 @@ export function createProviderServer({ env = process.env, provider = env.LLM_PRO
   return server;
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  createProviderServer().listen(8787, '127.0.0.1', () => console.log('Planning provider listening on http://127.0.0.1:8787'));
+  const port = Number(process.env.PORT ?? 8787);
+  const host = process.env.HOST ?? '127.0.0.1';
+  if (!Number.isSafeInteger(port) || port < 1 || port > 65535) throw Error('PORT must be an integer from 1 to 65535');
+  createProviderServer().listen(port, host, () => console.log(`Planning provider listening on http://${host}:${port}`));
 }

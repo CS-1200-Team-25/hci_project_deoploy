@@ -1,0 +1,24 @@
+# Review the instance plan before creating the Blueprint. This paid instance
+# stays running so cold starts do not disrupt timed pilot sessions.
+services:
+  - type: web
+    name: hci-planning-provider
+    runtime: node
+    plan: 0.5c-512mb
+    branch: deploy/vercel-render
+    buildCommand: npm ci --omit=dev
+    startCommand: npm run provider
+    healthCheckPath: /api/interventions/config
+    envVars:
+      - key: NODE_VERSION
+        value: 24.13.1
+      - key: HOST
+        value: 0.0.0.0
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: APP_ORIGIN
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.5-flash-lite
+      - key: GENERATION_TIMEOUT_MS
+        value: "15000"

@@ -84,14 +84,17 @@ Unsuccessful durations never populate successful completion time. Ended trials
 cannot be edited or completed again. Both outcomes require post-task answers
 before the controller reveals the next assigned scenario and starts its timer.
 
-Survey instrument version1 is a fixed pilot draft, not a recruitment-approved
+Survey instrument version2 is a fixed pilot draft, not a recruitment-approved
 instrument. Helpfulness uses1=not at all helpful and7=extremely helpful;
 interruption uses1=not at all interruptive and7=extremely interruptive. Both
 responses are required. Either response can instead be the distinct string
 `not-applicable` when that trial has no recorded assistance-display event.
 Drafts persist with ordered events. Submitted responses cannot be changed or
-submitted twice. The final instrument requires a trial experience by task/order
-or explicit no preference, plus an optional explanation. It reveals no condition
+submitted twice. The final instrument requires both a most-preferred and a
+least-preferred trial experience by task/order or explicit no preference for
+each, plus an optional explanation. Both answers persist in drafts, submitted
+responses and exports. Earlier survey versions are preserved and rejected on
+recovery rather than silently changing their instrument. It reveals no condition
 names. Completion requires all three ended trials and their required surveys.
 Recovery validates rating ranges, display-linked eligibility and phase gates.
 
@@ -100,6 +103,10 @@ an in-memory authorization for exceptional termination of that session. Codes
 are stored as salted verifiers; authorization is not persisted and reload
 relocks controls. A fixed bottom-left supervisor icon opens a side drawer with
 access and storage tools, keeping them outside the participant workspace.
+Unlocked controls include a testing skip button. It terminates the active task
+with the fixed reason "Skipped for testing." and opens the required post-task
+survey. Skipped tasks retain an unsuccessful outcome and elapsed duration,
+without a successful completion time; surveys and assignment order remain intact.
 A drawer toggle shows read-only testing scores on the main page: current issue severity,
 recency bonus, final score, condition threshold and engine eligibility/exclusions.
 Opening or refreshing the inspector never logs events, reserves signals, requests
