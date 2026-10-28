@@ -22,6 +22,7 @@ import type { GenerationConfiguration } from '../../agent/generation';
 import type { TaskAction } from '../../types/task';
 import { GenerationStatus } from './GenerationStatus';
 import { evaluateIdleTrial } from '../../experiment/interventions';
+import { TrainingTask } from './TrainingTask';
 
 export function ExperimentController() {
   const [recovery] = useState(() => {
@@ -275,6 +276,10 @@ export function ExperimentController() {
         <p>Each scenario lists all minimum passing requirements. Complete task checks your plan; blocking errors must be corrected, while optional improvements do not prevent completion.</p>
         <p>Assistant suggestions appear as toasts that stay visible while scrolling. Each stays until you acknowledge or dismiss it. Respond to all suggestions before completing the task. There is no chat.</p>
         <p>Timing begins when you reveal the scenario, including reading, editing and submission attempts. It continues through hidden tabs and reloads. There is no automatic timeout.</p>
+        <TrainingTask completed={session.events.some(event => event.eventType === 'training_completed')}
+          onAction={(action, quantity) => commit(recordEvent(sessionRef.current!, 'training_action', { action, quantity }))}
+          onComplete={() => commit(recordEvent(sessionRef.current!, 'training_completed'))} />
+        <p>When you are ready, reveal your first task. You may skip practice.</p>
         <button onClick={() => commit(revealTask(sessionRef.current!))}>Reveal first task</button>
       </>}
       {session.phase === 'task' && <>

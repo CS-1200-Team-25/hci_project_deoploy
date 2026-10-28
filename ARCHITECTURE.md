@@ -41,6 +41,14 @@ WELCOME / CONSENT
 
 The `ExperimentController` is the only component allowed to advance this state machine.
 
+INSTRUCTIONS includes an optional, untimed training exercise to add water,
+change its quantity to two and complete practice. It uses the shared shell and
+catalog/plan control styles. The controller records practice actions and completion
+as session-level events; practice never enters the three-trial assignment,
+intervention engine, trial timing or surveys. Completion is restored from its
+event after reload; unfinished practice starts over. Participants may proceed
+directly to the first task.
+
 ## Experiment session model
 
 ```ts

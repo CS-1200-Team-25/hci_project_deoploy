@@ -14,6 +14,12 @@ Local storage does not coordinate allocations between browsers or supervisors.
 
 `ExperimentController` owns all participant navigation: welcome/consent,
 instructions, three task/post-task-survey pairs, final survey and completion.
+The instructions screen includes optional, untimed UI practice: add water,
+change its quantity to two and complete practice. Removing the item is also
+available. Practice actions and completion are logged as session-level
+`training_action` and `training_completed` events, separate from trial actions.
+Completion survives reload; an unfinished practice plan resets on reload.
+Practice does not start trial timers, alter assignments or request assistance.
 Birthday planning
 now supports catalog selection, quantity edits, scheduled activity moves and
 removal. Its public task contract validates 12 food servings, 12 drink servings,
