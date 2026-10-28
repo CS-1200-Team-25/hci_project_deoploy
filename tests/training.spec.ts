@@ -10,9 +10,9 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('practice teaches adding, editing and removing without starting or changing trials', async ({ page }) => {
-  let providerRequests = 0;
-  await page.route('**/api/interventions**', route => {
-    providerRequests++;
+  let adviceRequests = 0;
+  await page.route('**/api/interventions', route => {
+    adviceRequests++;
     return route.abort();
   });
   const before = await page.evaluate(() => JSON.parse(localStorage.getItem('planning-pilot-session-v1')!));
@@ -43,7 +43,7 @@ test('practice teaches adding, editing and removing without starting or changing
   await page.reload();
   await expect(page.getByRole('status')).toHaveText('Practice complete. You can now reveal your first task.');
   await expect(page.getByRole('button', { name: 'Complete practice' })).toHaveCount(0);
-  expect(providerRequests).toBe(0);
+  expect(adviceRequests).toBe(0);
   await page.getByRole('button', { name: 'Reveal first task' }).click();
   await expect(page.getByRole('heading', { name: 'Scenario and minimum requirements' })).toBeVisible();
   const started = await page.evaluate(() => JSON.parse(localStorage.getItem('planning-pilot-session-v1')!));

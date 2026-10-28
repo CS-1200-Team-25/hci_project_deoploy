@@ -42,7 +42,9 @@ export function ExperimentController() {
   const [supervisorCode, setSupervisorCode] = useState('');
   const [showIssueScores, setShowIssueScores] = useState(false);
   const creating = useRef(false);
+  const mounted = useRef(false);
   const generationConfig = useRef<GenerationConfiguration | null>(null);
+  const generationConfigRequest = useRef<Promise<GenerationConfiguration> | null>(null);
   const pendingRequest = useRef<{ id: string; trialId: string; revision: number; controller: AbortController; timer: ReturnType<typeof setTimeout> } | null>(null);
   const [validationToast, setValidationToast] = useState<{ attempt: number; errors: string[] } | null>(null);
 
@@ -89,6 +91,9 @@ export function ExperimentController() {
   }
 
   useEffect(() => {
+    mounted.current = true;
+    // Wake the backend during setup, without requesting advice or changing study state.
+    void loadGenerationConfiguration().catch(() => {});
     if (recovery.session && !recovered.current) {
       recovered.current = true;
       commit(recoverSession(recovery.session));
@@ -112,6 +117,7 @@ export function ExperimentController() {
     window.addEventListener('pagehide', pageHidden);
     window.addEventListener('focus', reloadIfStorageChanged);
     return () => {
+      mounted.current = false;
       if (pendingRequest.current) {
         const pending = pendingRequest.current;
         pendingRequest.current = null;
@@ -148,24 +154,43 @@ export function ExperimentController() {
     await generateSelectedAdvice(previous, next);
   }
 
+  function loadGenerationConfiguration(): Promise<GenerationConfiguration> {
+    if (generationConfig.current) return Promise.resolve(generationConfig.current);
+    if (generationConfigRequest.current) return generationConfigRequest.current;
+    generationConfigRequest.current = (async () => {
+      const deadline = Date.now() + 90_000;
+      while (Date.now() < deadline) {
+        try {
+          const response = await fetch('/api/interventions/config', {
+            cache: 'no-store', signal: AbortSignal.timeout(Math.min(15_000, deadline - Date.now())),
+          });
+          if (!response.ok) throw new Error('configuration-unavailable');
+          const value: unknown = await response.json();
+          if (!validGenerationConfiguration(value)) throw new Error('configuration-unavailable');
+          generationConfig.current = value;
+          return value;
+        } catch {
+          if (Date.now() >= deadline) break;
+          await new Promise(resolve => setTimeout(resolve, Math.min(1000, deadline - Date.now())));
+        }
+      }
+      throw new Error('configuration-unavailable');
+    })().finally(() => { generationConfigRequest.current = null; });
+    return generationConfigRequest.current;
+  }
+
   async function generateSelectedAdvice(previous: ExperimentSession, next: ExperimentSession) {
     const selection = next.trials[next.currentTrialIndex].agentHistory?.selections.at(-1);
     if (!selection || selection.stateRevision !== next.trials[next.currentTrialIndex].stateRevision
       || previous.trials[previous.currentTrialIndex].agentHistory?.selections.some((candidate) => candidate.id === selection.id)) return;
-    let config = generationConfig.current;
-    if (!config) {
-      try {
-        const response = await fetch('/api/interventions/config', { signal: AbortSignal.timeout(5000) });
-        const value: unknown = await response.json();
-        if (!response.ok || !validGenerationConfiguration(value)) throw new Error('configuration-unavailable');
-        config = value;
-        generationConfig.current = config;
-      } catch {
-        const current = sessionRef.current!;
-        commit(abandonSelection(current, selection.id, 'configuration-unavailable'));
-        return;
-      }
+    let config: GenerationConfiguration;
+    try {
+      config = await loadGenerationConfiguration();
+    } catch {
+      if (mounted.current) commit(abandonSelection(sessionRef.current!, selection.id, 'configuration-unavailable'));
+      return;
     }
+    if (!mounted.current) return;
     const started = beginGeneration(sessionRef.current!, selection.id, config);
     if (started === sessionRef.current) {
       commit(abandonSelection(sessionRef.current!, selection.id, 'selection-no-longer-current'));
