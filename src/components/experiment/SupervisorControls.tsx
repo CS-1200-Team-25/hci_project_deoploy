@@ -23,6 +23,8 @@ export function SupervisorControls({ session, onTerminate }: {
       <button type="submit">Unlock supervisor controls</button>
     </form> : <form onSubmit={(event) => { event.preventDefault(); if (reason.trim()) onTerminate(authorization, reason); }}>
       <p>Exceptional termination records an unsuccessful trial. It does not count as time to successful completion.</p>
+      <p>For testing, skip the current task and continue to its post-task survey. This records the reason "Skipped for testing."</p>
+      <button type="button" onClick={() => onTerminate(authorization, 'Skipped for testing.')}>Skip task (testing)</button>
       <label>Termination reason<textarea required value={reason} onChange={(event) => setReason(event.target.value)} /></label>
       <button type="submit" disabled={!reason.trim()}>End unsuccessful trial</button>
       <button type="button" onClick={() => { setAuthorization(null); setReason(''); }}>Lock supervisor controls</button>
