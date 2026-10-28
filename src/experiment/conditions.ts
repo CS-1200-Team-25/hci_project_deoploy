@@ -7,7 +7,7 @@ export const PILOT_CONFIGURATION: PilotConfiguration = {
   policyVersion: 'pilot-policy-v4',
   signalVersion: 'planning-signals-v4',
   displayCooldowns: { globalMs: 30_000, signalMs: 60_000 },
-  surveyVersion: 'pilot-surveys-v1',
+  surveyVersion: 'pilot-surveys-v2',
   conditions: {
     baseline: { proactive: false, threshold: null },
     low: { proactive: true, threshold: 0.6 },

@@ -64,6 +64,11 @@ reload locks the controls again. A salted SHA-256 verifier is stored locally,
 not the plaintext code. This protects ordinary supervised controls; it is not
 remote authentication or a defense against someone modifying browser data.
 
+For testing, open **Supervisor tools > Supervisor access**, unlock the controls,
+and choose **Skip task (testing)**. This ends the current task with the reason
+"Skipped for testing." and opens its post-task survey. It records an unsuccessful
+trial, not a successful completion; answer the survey to reveal the next task.
+
 Assignment, phase, timing anchors, configuration and ordered event records are
 stored under `planning-pilot-session-v1` in browser local storage after each
 committed action. Reload resumes that same session. Consent checkboxes remain
@@ -132,8 +137,12 @@ are read-only and altered saved commitments block recovery.
 After each trial, answer helpfulness and interruption on fixed1–7 scales with
 visible endpoint anchors. Helpfulness has a distinct not-applicable option when
 no assistance was displayed. Draft answers persist immediately and reload
-restores them. After three task/survey pairs, select a preferred trial experience
-by task/order, or no preference, with an optional explanation. Final submission
+restores them. After three task/survey pairs, select the most-preferred and
+least-preferred trial experiences by task/order, or no preference for each,
+with an optional explanation. Both choices are required and persist on reload.
+Survey version 2 adds the least-preferred answer; earlier sessions are preserved
+and rejected on recovery, so export existing records before starting a new session.
+Final submission
 reaches completion; ended plans and submitted surveys remain immutable.
 
 Survey and consent wording are internal pilot drafts, not recruitment-approved

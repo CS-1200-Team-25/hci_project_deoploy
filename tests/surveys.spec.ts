@@ -30,6 +30,8 @@ test('not-applicable answers are rejected after displayed assistance and damaged
     { ...ended, postTaskSurveys: { [ended.trials[0].id]: { helpfulness: 4, interruption: 1, submittedAt: 3200 } } },
     { ...ended, phase: 'final-survey' as const },
     { ...ended, finalSurveyDraft: { preferredTrialId: 'unknown-trial', explanation: '' } },
+    { ...ended, finalSurveyDraft: { leastPreferredTrialId: 'unknown-trial', explanation: '' } },
+    { ...ended, configuration: { ...ended.configuration, surveyVersion: 'pilot-surveys-v1' } },
   ];
   for (const session of invalid) {
     let serialized: string | null = null;
@@ -99,9 +101,15 @@ test('all three real tasks, persisted survey drafts and final trial preference r
   await page.getByRole('button', { name: 'Submit post-task survey' }).click();
   await expect(page.getByRole('heading', { name: 'Final survey' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Submit final survey' })).toBeDisabled();
-  await page.getByLabel('Preferred trial experience').selectOption({ label: 'Trial 2 · Weekend-itinerary planning' });
+  await page.getByLabel('Preferred trial experience', { exact: true }).selectOption({ label: 'Trial 2 · Weekend-itinerary planning' });
   await page.getByLabel('Optional explanation').fill('I liked planning the trip.');
+  await expect(page.getByRole('button', { name: 'Submit final survey' })).toBeDisabled();
+  const leastOptions = page.getByLabel('Least preferred trial experience').locator('option');
+  expect(await leastOptions.allTextContents()).toEqual(await page.getByLabel('Preferred trial experience', { exact: true }).locator('option').allTextContents());
+  await page.getByLabel('Least preferred trial experience').selectOption({ index: 1 });
+  const leastPreferredTrialId = await page.getByLabel('Least preferred trial experience').inputValue();
   await page.reload();
+  await expect(page.getByLabel('Least preferred trial experience')).toHaveValue(leastPreferredTrialId);
   await expect(page.getByLabel('Optional explanation')).toHaveValue('I liked planning the trip.');
   await expect(page.getByText(/baseline|low eagerness|high eagerness/i)).toHaveCount(0);
   await page.getByRole('button', { name: 'Submit final survey' }).click();
@@ -114,6 +122,7 @@ test('all three real tasks, persisted survey drafts and final trial preference r
   });
   expect(session.trials.map((trial: { status: string }) => trial.status)).toEqual(['completed', 'completed', 'completed']);
   expect(session.finalSurvey.preferredTrialId).toBe(session.trials[1].id);
+  expect(session.finalSurvey.leastPreferredTrialId).toBe(session.trials[0].id);
   expect(session.postTaskSurveys[session.trials[0].id].helpfulness).toBe('not-applicable');
   expect(session.postTaskSurveys[session.trials[0].id].interruption).toBe('not-applicable');
   expect(session.events.filter((event: { eventType: string }) => event.eventType === 'post_task_survey_submitted')).toHaveLength(3);
@@ -161,9 +170,11 @@ test('three adapter trials including unsuccessful termination require surveys be
   expect(session.trials.map((trial) => trial.outcome)).toEqual(['successful', 'unsuccessful', 'successful']);
   expect(() => submitFinalSurvey(session, 5500)).toThrow(/preference/);
   session = setFinalSurveyDraft(session, { preferredTrialId: null, explanation: '' }, 5600);
+  expect(() => submitFinalSurvey(session, 5650)).toThrow(/least preferred/);
+  session = setFinalSurveyDraft(session, { preferredTrialId: null, leastPreferredTrialId: null, explanation: '' }, 5675);
   const completed = submitFinalSurvey(session, 5700);
   expect(completed.phase).toBe('complete');
-  expect(completed.finalSurvey).toEqual({ preferredTrialId: null, explanation: '', submittedAt: 5700 });
+  expect(completed.finalSurvey).toEqual({ preferredTrialId: null, leastPreferredTrialId: null, explanation: '', submittedAt: 5700 });
   expect(submitFinalSurvey(completed, 5800)).toBe(completed);
   expect(completed.events.filter((event) => event.eventType === 'post_task_survey_submitted')).toHaveLength(3);
   expect(completed.events.filter((event) => event.eventType === 'final_survey_submitted')).toHaveLength(1);

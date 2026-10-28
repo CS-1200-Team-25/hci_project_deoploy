@@ -13,7 +13,13 @@ export function FinalSurveyForm({ draft, trials, onChange, onSubmit }: {
         <option value="no-preference">No preference</option>
       </select>
     </label>
+    <label>Which trial experience did you like least overall?
+      <select aria-label="Least preferred trial experience" required value={draft.leastPreferredTrialId === null ? 'no-preference' : draft.leastPreferredTrialId ?? ''} onChange={(event) => onChange({ ...draft, leastPreferredTrialId: event.target.value === '' ? undefined : event.target.value === 'no-preference' ? null : event.target.value })}>
+        <option value="">Choose a response</option>{trials.map((trial, index) => <option key={trial.id} value={trial.id}>Trial {index + 1} · {PILOT_SCENARIOS[trial.task].title}</option>)}
+        <option value="no-preference">No preference</option>
+      </select>
+    </label>
     <label>Optional explanation<textarea value={draft.explanation} onChange={(event) => onChange({ ...draft, explanation: event.target.value })} /></label>
-    <button type="submit" disabled={draft.preferredTrialId === undefined}>Submit final survey</button>
+    <button type="submit" disabled={draft.preferredTrialId === undefined || draft.leastPreferredTrialId === undefined}>Submit final survey</button>
   </form>;
 }
