@@ -54,6 +54,9 @@ button:focus-visible, input:focus-visible { outline: 3px solid #6e9edc; outline-
 .catalog-option button { margin-top: 12px; padding: 8px; }
 .plan-item { margin-top: 16px; padding: 16px; border: 1px solid #cdd6e2; border-radius: 8px; }
 .plan-item label { margin: 12px 0; }
+.training-task { margin-top: 24px; padding: 20px; border: 1px solid #dfe4ec; border-radius: 12px; }
+.training-task > p, .training-task > button, .training-task > .catalog-option { margin-top: 12px; }
+.training-task > h4 { margin-bottom: 0; }
 .validation-feedback { margin: 20px 0; padding: 16px; border: 1px solid #dfe4ec; border-radius: 8px; }
 .supervisor-controls { margin-top: 24px; padding-top: 16px; border-top: 1px solid #dfe4ec; }
 .supervisor-trigger { position: fixed; z-index: 12; bottom: 16px; left: 16px; width: 48px; height: 48px; padding: 12px; border-radius: 50%; box-shadow: 0 4px 20px #26334b33; }
