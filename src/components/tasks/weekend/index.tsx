@@ -63,7 +63,7 @@ export function WeekendWorkspace({ state, onChange }: { state: WeekendState; onC
           const [hours, minutes] = event.target.value.split(':').map(Number);
           update(item, { startMinute: Math.floor(item.startMinute / 1440) * 1440 + hours * 60 + minutes }, 'item_moved');
         }} /></label>
-        <button type="button" onClick={() => onChange({ ...state, activities: state.activities.filter((candidate) => candidate.id !== item.id) }, { type: 'item_removed', payload: { item } })}>Remove</button>
+        <button type="button" className="button-danger" onClick={() => onChange({ ...state, activities: state.activities.filter((candidate) => candidate.id !== item.id) }, { type: 'item_removed', payload: { item } })}>Remove</button>
       </fieldset>;
     })}
   </>;

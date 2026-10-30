@@ -38,7 +38,7 @@ export function ScheduleWorkspace({ state, onChange }: { state: ScheduleState; o
         update(block, { startMinute: hours * 60 + minutes }, 'item_moved');
       }} /></label>
       <label>Duration (minutes)<input type="number" min="1" step="1" value={block.durationMinutes} onChange={(event) => update(block, { durationMinutes: Number(event.target.value) }, 'item_updated')} /></label>
-      <button type="button" onClick={() => onChange({ blocks: state.blocks.filter((candidate) => candidate.id !== block.id) }, { type: 'item_removed', payload: { block } })}>Remove</button>
+      <button type="button" className="button-danger" onClick={() => onChange({ blocks: state.blocks.filter((candidate) => candidate.id !== block.id) }, { type: 'item_removed', payload: { block } })}>Remove</button>
     </fieldset>)}
   </>;
 }

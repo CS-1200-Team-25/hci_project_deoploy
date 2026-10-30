@@ -37,6 +37,7 @@ npm run provider
 
 Keep `.env` private. Restart the provider after changing its configuration and
 reload the browser. See [provider setup and troubleshooting](docs/provider.md).
+Set optional `GEMINI_API_KEY_2` in `.env` to alternate requests between two keys.
 Low/high sessions without the provider can show a configuration failure when
 an issue qualifies; they cannot display generated suggestions.
 

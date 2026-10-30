@@ -31,7 +31,7 @@ export function TrainingTask({ completed, onAction, onComplete }: {
             setError('');
             onAction('item_updated', next);
           }} /></label>
-        <button type="button" onClick={() => {
+        <button type="button" className="button-danger" onClick={() => {
           setQuantity(null);
           setError('');
           onAction('item_removed', quantity);

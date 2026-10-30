@@ -38,7 +38,10 @@ function validAdvice(value, signal) {
 export function createProviderServer({ env = process.env, provider = env.LLM_PROVIDER ?? 'gemini', apiKey, fetchImpl = fetch, origin = env.APP_ORIGIN ?? 'http://localhost:5173', timeoutMs, model, baseUrl } = {}) {
   const config = providerConfiguration({ ...env, LLM_PROVIDER: provider, ...(model !== undefined ? { GEMINI_MODEL: model } : {}), ...(timeoutMs !== undefined ? { GENERATION_TIMEOUT_MS: String(timeoutMs) } : {}) });
   const adapter = geminiAdapter;
-  apiKey ??= adapter.credential(env);
+  const apiKeys = [...new Set((apiKey == null ? [adapter.credential(env), env.GEMINI_API_KEY_2] : [apiKey])
+    .filter(key => typeof key === 'string' && key.trim().length > 0).map(key => key.trim()))];
+  const secrets = [...new Set(apiKeys.flatMap(key => [key, encodeURIComponent(key)]))].sort((a, b) => b.length - a.length);
+  let nextApiKey = 0;
   const endpointValue = baseUrl ?? env.GEMINI_BASE_URL ?? env.LLM_BASE_URL ?? adapter.defaultBaseUrl;
   const endpoint = new URL(endpointValue);
   if (!['http:', 'https:'].includes(endpoint.protocol) || endpoint.username || endpoint.password || endpoint.search || endpoint.hash
@@ -63,19 +66,20 @@ export function createProviderServer({ env = process.env, provider = env.LLM_PRO
     let input;
     try { input = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { return send(400, { error: 'invalid-json' }); }
     if (!validRequest(input)) return send(400, { error: 'invalid-request' });
-    if (!apiKey) return send(503, { error: 'provider-unconfigured' });
+    if (apiKeys.length === 0) return send(503, { error: 'provider-unconfigured' });
     if (Date.now() - windowStart >= 60000) { windowStart = Date.now(); requests = 0; }
     if (active >= 2 || requests >= 20) return send(429, { error: 'provider-busy' });
     active++; requests++;
+    // Advance before awaiting upstream so concurrent requests receive successive keys.
+    const selectedApiKey = apiKeys[nextApiKey];
+    nextApiKey = (nextApiKey + 1) % apiKeys.length;
     const startedAt = Date.now();
     let stage = 'transport';
     const diagnostic = extra => ({ provider: config.provider, model: config.model, stage, elapsedMs: Date.now() - startedAt, ...extra });
     const safeMessage = value => {
       if (typeof value !== 'string') return undefined;
       let message = value;
-      for (const secret of [apiKey, apiKey ? encodeURIComponent(apiKey) : undefined]) {
-        if (secret) message = message.split(secret).join('<REDACTED>');
-      }
+      for (const secret of secrets) message = message.split(secret).join('<REDACTED>');
       return message.replace(/https?:\/\/[^\s]+/gi, '<REDACTED_URL>').slice(0, 1000);
     };
     const abort = new AbortController();
@@ -88,7 +92,7 @@ export function createProviderServer({ env = process.env, provider = env.LLM_PRO
         signalId: { type: 'string', enum: [input.signal.id] },
         target: typeof input.signal.target === 'string' ? { type: 'string', enum: [input.signal.target] } : { type: 'null' },
       } };
-      const call = adapter.build({ config, baseUrl, apiKey, prompt, schema: selectedSchema, input: { signal: input.signal, context: input.context } });
+      const call = adapter.build({ config, baseUrl, apiKey: selectedApiKey, prompt, schema: selectedSchema, input: { signal: input.signal, context: input.context } });
       const upstream = await fetchImpl(call.url, { method: 'POST', headers: { ...call.headers, 'Content-Type': 'application/json' }, signal: abort.signal, redirect: 'error', body: JSON.stringify(call.body) });
       stage = 'upstream-response';
       if (!upstream.ok) {

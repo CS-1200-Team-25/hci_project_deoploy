@@ -144,6 +144,101 @@ test('Gemini credential precedence preserves legacy aliases without leaking keys
   assert.equal(geminiAdapter.credential({ OPENAI_API_KEY: 'unsupported' }), undefined);
 });
 
+function successfulAdvice() {
+  return Response.json({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: JSON.stringify({ signalId: 'food', type: 'suggestion', message: 'Add food for twelve guests.', target: null }) }] } }] });
+}
+
+test('Gemini key rotation alternates accepted requests, including upstream failures', async () => {
+  const usedKeys = [];
+  await fixture({ env: { GEMINI_API_KEY: 'first-key', GEMINI_API_KEY_2: 'second-key' }, fetchImpl: async (_url, options) => {
+    usedKeys.push(options.headers['x-goog-api-key']);
+    return usedKeys.length === 2 ? Response.json({ error: { message: 'Unavailable' } }, { status: 503 }) : successfulAdvice();
+  } }, async ({ url, post }) => {
+    assert.equal((await post()).status, 200);
+    const config = await (await fetch(`${url}/api/interventions/config`)).json();
+    assert.deepEqual(config, configuration);
+    assert.equal((await post({ ...request, condition: 'high' })).status, 400);
+    assert.equal((await post(request, 'https://other.example')).status, 403);
+    assert.equal((await post()).status, 502);
+    assert.equal((await post()).status, 200);
+    assert.equal((await post()).status, 200);
+    assert.deepEqual(usedKeys, ['first-key', 'second-key', 'first-key', 'second-key']);
+  });
+});
+
+for (const [name, env, expectedKeys] of [
+  ['one primary key', { GEMINI_API_KEY: 'first-key', GEMINI_API_KEY_2: '  ' }, ['first-key', 'first-key']],
+  ['one secondary key', { GEMINI_API_KEY: ' ', GEMINI_API_KEY_2: ' second-key ' }, ['second-key', 'second-key']],
+  ['duplicate keys', { GEMINI_API_KEY: 'first-key', GEMINI_API_KEY_2: ' first-key ' }, ['first-key', 'first-key']],
+  ['Google alias', { GOOGLE_API_KEY: 'google-key', GEMINI_API_KEY_2: 'second-key' }, ['google-key', 'second-key']],
+  ['legacy alias', { LLM_API_KEY: 'legacy-key', GEMINI_API_KEY_2: 'second-key' }, ['legacy-key', 'second-key']],
+]) {
+  test(`Gemini key rotation supports ${name}`, async () => {
+    const usedKeys = [];
+    await fixture({ env, fetchImpl: async (_url, options) => {
+      usedKeys.push(options.headers['x-goog-api-key']);
+      return successfulAdvice();
+    } }, async ({ post }) => {
+      assert.equal((await post()).status, 200);
+      assert.equal((await post()).status, 200);
+      assert.deepEqual(usedKeys, expectedKeys);
+    });
+  });
+}
+
+test('Gemini key rotation returns unconfigured when both keys are blank', async () => fixture({ env: { GEMINI_API_KEY: ' ', GEMINI_API_KEY_2: ' ' }, fetchImpl: () => { throw Error('must not call'); } }, async ({ post }) => {
+  assert.equal((await post()).status, 503);
+}));
+
+test('Gemini key rotation preserves explicit single-key overrides', async () => fixture({ env: { GEMINI_API_KEY: 'first-key', GEMINI_API_KEY_2: 'second-key' }, apiKey: 'override-key', fetchImpl: async (_url, options) => {
+  assert.equal(options.headers['x-goog-api-key'], 'override-key');
+  return successfulAdvice();
+} }, async ({ post }) => {
+  assert.equal((await post()).status, 200);
+  assert.equal((await post()).status, 200);
+}));
+
+test('Gemini key rotation handles overlapping calls without advancing on a locally busy request', async () => {
+  const usedKeys = [];
+  const releases = [];
+  let notifyStarted;
+  const bothStarted = new Promise(resolve => { notifyStarted = resolve; });
+  await fixture({ env: { GEMINI_API_KEY: 'first-key', GEMINI_API_KEY_2: 'second-key' }, fetchImpl: async (_url, options) => {
+    usedKeys.push(options.headers['x-goog-api-key']);
+    if (usedKeys.length <= 2) await new Promise(resolve => {
+      releases.push(resolve);
+      if (releases.length === 2) notifyStarted();
+    });
+    return successfulAdvice();
+  } }, async ({ post }) => {
+    const pending = [post(), post()];
+    try {
+      await bothStarted;
+      assert.equal((await post()).status, 429);
+      releases[1]();
+      assert.equal((await Promise.race(pending)).status, 200);
+      assert.equal((await post()).status, 200);
+      assert.deepEqual(usedKeys, ['first-key', 'second-key', 'first-key']);
+    } finally {
+      releases.forEach(resolve => resolve());
+      await Promise.all(pending);
+    }
+  });
+});
+
+test('Gemini key rotation redacts every configured key and its encoded form from upstream errors', async () => {
+  const secrets = ['secret/key+one', 'secret/key+two'];
+  await fixture({ env: { GEMINI_API_KEY: secrets[0], GEMINI_API_KEY_2: secrets[1] }, fetchImpl: async () => Response.json({ error: { message: `Invalid credentials: ${secrets.join(' ')} ${secrets.map(encodeURIComponent).join(' ')}` } }, { status: 401 }) }, async ({ post }) => {
+    for (let i = 0; i < 2; i++) {
+      const response = await post();
+      assert.equal(response.status, 502);
+      const body = await response.json();
+      assert.match(body.diagnostics.message, /Invalid credentials/);
+      for (const secret of secrets.flatMap(key => [key, encodeURIComponent(key)])) assert.equal(JSON.stringify(body).includes(secret), false);
+    }
+  });
+});
+
 test('loopback Gemini endpoints still require a key', async () => fixture({ env: {}, baseUrl: 'http://127.0.0.1:9999/v1beta', fetchImpl: () => { throw Error('must not call'); } }, async ({ post }) => {
   assert.equal((await post()).status, 503);
 }));
