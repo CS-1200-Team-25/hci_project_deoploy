@@ -40,7 +40,7 @@ export function BirthdayWorkspace({ state, onChange }: {
             const [hours, minutes] = event.target.value.split(':').map(Number);
             if (event.target.value) update(item, { startMinute: hours * 60 + minutes }, 'item_moved');
           }} /></label>}
-        <button type="button" onClick={() => onChange({ items: state.items.filter((candidate) => candidate.id !== item.id) }, { type: 'item_removed', payload: { item } })}>Remove</button>
+        <button type="button" className="button-danger" onClick={() => onChange({ items: state.items.filter((candidate) => candidate.id !== item.id) }, { type: 'item_removed', payload: { item } })}>Remove</button>
       </fieldset>;
     })}
   </>;

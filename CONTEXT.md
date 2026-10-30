@@ -186,7 +186,12 @@ records remain readable. Minimal does not guarantee disabled thinking. OpenAI an
 no generation requests. Provider identity, model, prompt/schema,
 output limit and finite timeout are shared across active conditions and recorded
 with every request; condition is never sent to the provider. The provider key
-stays on the server. See `docs/provider.md` for startup and live smoke checks.
+stays on the server. Optional `GEMINI_API_KEY_2` enables process-wide round-robin
+rotation with the primary key for accepted generation requests, including
+concurrent calls. Blank and duplicate keys are ignored; a single key still works.
+Failures consume their turn without retry, restart resets rotation, and all
+configured keys are redacted from error messages. Shared request limits remain
+unchanged. See `docs/provider.md` for startup and live smoke checks.
 
 Generation permits one pending request per trial. Every meaningful edit cancels
 its prior revision; completion, termination and reload also end pending requests.

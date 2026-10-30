@@ -26,6 +26,20 @@ LLM_MODEL and LLM_BASE_URL remain migration aliases; Gemini-specific settings ta
 precedence. LLM_PROVIDER may be omitted or set to gemini; other values fail at
 startup. There is no runtime provider selection or automatic fallback.
 
+Set optional `GEMINI_API_KEY_2` alongside `GEMINI_API_KEY` to alternate requests
+between two keys in round-robin order (first, second, first, second). The first
+key still follows the alias precedence above. Blank keys are ignored; duplicate
+keys are used once, and a single configured key continues to serve every request.
+Rotation is shared across sessions in one provider process and resets on restart.
+Only accepted generation requests advance it; configuration reads, invalid
+requests and locally busy responses do not. Failed or canceled upstream requests
+consume their turn without an automatic retry. Both keys remain server-only and
+are redacted from error messages. The existing two-call concurrency and
+twenty-per-minute limits apply across both keys together.
+
+Google applies [Gemini rate limits per project](https://ai.google.dev/gemini-api/docs/rate-limits),
+so two keys in the same Google Cloud project share that project's quota.
+
 The default API root is https://generativelanguage.googleapis.com/v1beta.
 GEMINI_BASE_URL optionally overrides that root for a Gemini-protocol endpoint.
 Include the API prefix without /models or :generateContent. URLs must use HTTPS,
@@ -161,7 +175,7 @@ format and lifecycle behavior; they cannot guarantee live Gemini latency.
 Generation failures retain the stable error code and include diagnostics with
 provider/model, failure stage and elapsedMs. Upstream HTTP failures include
 upstreamStatus and Gemini error status/message when available. Messages are
-bounded, the configured key is redacted, and URLs are removed. Raw upstream
+bounded, all configured keys are redacted, and URLs are removed. Raw upstream
 bodies, headers and exception messages are never returned. Transport errors
 include recognized cause codes; timeouts include timeoutMs. Participant warnings
 remain generic; Postman and retained response records expose these details.
