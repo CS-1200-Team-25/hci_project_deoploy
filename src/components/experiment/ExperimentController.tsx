@@ -254,6 +254,17 @@ export function ExperimentController() {
       : null);
   }
 
+  function exportSession() {
+    let available = sessionRef.current!;
+    if (storageReadFailed.current) {
+      available = recordEvent(available, 'persistence_failed', { operation: 'read' });
+      storageReadFailed.current = false;
+      sessionRef.current = available;
+      setSession(available);
+    }
+    downloadSession(available);
+  }
+
   return (
     <ExperimentShell title={session.phase === 'task' ? scenario.title : 'Planning session'}
       assistant={{ interventions: trial.agentHistory?.interventions, onRespond: session.phase === 'task'
@@ -298,7 +309,11 @@ export function ExperimentController() {
       </>}
       {session.phase === 'final-survey' && <FinalSurveyForm draft={session.finalSurveyDraft} trials={session.trials}
         onChange={(draft) => commit(setFinalSurveyDraft(sessionRef.current!, draft))} onSubmit={() => commit(submitFinalSurvey(sessionRef.current!))} />}
-      {session.phase === 'complete' && <><h2>Session complete</h2><p>Thank you. Tell the supervisor you have finished so they can export the session records.</p></>}
+      {session.phase === 'complete' && <>
+        <h2>Session complete</h2>
+        <p>Thank you. Download your session records below and check that the JSON file was saved before closing this tab.</p>
+        <button type="button" onClick={exportSession}>Download JSON</button>
+      </>}
       <GenerationStatus events={session.events} />
       {showIssueScores && <IssueScoreInspector session={session} />}
       <SupervisorDrawer key={session.phase}>
@@ -313,16 +328,7 @@ export function ExperimentController() {
       {session.phase === 'task' && definition && <SupervisorControls session={session} onTerminate={(authorization, reason) => commit(terminateTask(sessionRef.current!, authorization, reason))} />}
       <details className="supervisor-controls">
         <summary>Supervisor storage tools</summary>
-        <button type="button" onClick={() => {
-          let available = sessionRef.current!;
-          if (storageReadFailed.current) {
-            available = recordEvent(available, 'persistence_failed', { operation: 'read' });
-            storageReadFailed.current = false;
-            sessionRef.current = available;
-            setSession(available);
-          }
-          downloadSession(available);
-        }}>Download session JSON</button>
+        <button type="button" onClick={exportSession}>Download session JSON</button>
         <p>Download complete or incomplete records without clearing local data. Check that the file was saved before closing this tab.</p>
         {session.events.some((event) => event.eventType === 'persistence_failed') && <p>Retention is compromised: local storage failed during this session. Export the available in-memory records now.</p>}
         <p>For disposable QA sessions, edit or remove the saved session in browser storage, then reload it here. Preserve study data first. Reloading discards unsaved in-memory changes.</p>
