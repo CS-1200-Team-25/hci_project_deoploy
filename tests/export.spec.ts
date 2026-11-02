@@ -2,10 +2,14 @@ import { openSupervisorTools } from './supervisor-tools';
 import { expect, test, type Page } from '@playwright/test';
 
 async function downloadSession(page: Page) {
-  await openSupervisorTools(page);
-  await page.getByText('Supervisor storage tools', { exact: true }).click();
+  const completionDownload = page.getByRole('button', { name: 'Download JSON', exact: true });
+  const fromCompletionPage = await completionDownload.isVisible();
+  if (!fromCompletionPage) {
+    await openSupervisorTools(page);
+    await page.getByText('Supervisor storage tools', { exact: true }).click();
+  }
   const downloaded = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Download session JSON' }).click();
+  await (fromCompletionPage ? completionDownload : page.getByRole('button', { name: 'Download session JSON' })).click();
   const download = await downloaded;
   const stream = await download.createReadStream();
   let json = '';
@@ -108,6 +112,9 @@ test('completed export preserves unsuccessful durations, successful timing and r
   await page.getByLabel('Least preferred trial experience').selectOption('no-preference');
   await page.getByLabel('Optional explanation').fill('Pilot export check');
   await page.getByRole('button', { name: 'Submit final survey' }).click();
+  await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Download JSON', exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Supervisor tools' })).not.toBeVisible();
   const document = await downloadSession(page);
   expect(document.completion).toBe('complete');
   expect(document.trialMetrics.map((metric: unknown) => metric)).toEqual([
@@ -124,6 +131,11 @@ test('completed export preserves unsuccessful durations, successful timing and r
   expect(document.materials.survey.leastPreference).toEqual({ question: 'Which trial experience did you like least overall?', noPreference: null });
   expect(document.materials.survey.version).toBe('pilot-surveys-v2');
   expect(document.retention.compromised).toBe(false);
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Download JSON', exact: true })).toBeVisible();
+  const recoveredDocument = await downloadSession(page);
+  expect(recoveredDocument.completion).toBe('complete');
+  expect(recoveredDocument.session.finalSurvey).toEqual(document.session.finalSurvey);
 });
 
 test('storage read exceptions during editing are retained in the download', async ({ page }) => {

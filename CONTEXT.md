@@ -222,6 +222,9 @@ requests as well as idle evaluations, including after recovery. Edits still log
 signal evaluations and resolutions. Responding to the last outstanding suggestion
 starts a fresh30-second idle period; display cooldowns continue to use shown times.
 
+The completion page offers a labeled Download JSON button directly in the
+workspace. Supervisor storage tools also retain export access for incomplete
+sessions. Both actions download the same records without clearing local data.
 Session exports use `planning-pilot-export-v1`: a lossless session snapshot
 (excluding the supervisor verifier), original ordered events, explicit millisecond
 units, derived selection/display counts and distinct successful versus unsuccessful
